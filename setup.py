@@ -8,7 +8,7 @@ setup(
     author='Kevin Bonnoron',
     author_email='kevin.bonnoron@gmail.com',
     url='https://github.com/KevinBonnoron',
-    download_url='https://github.com/KevinBonnoron/the_keyspy/archive/refs/tags/v0.0.3.tar.gz',
+    download_url='https://github.com/KevinBonnoron/the_keyspy/archive/refs/tags/v0.0.4.tar.gz',
     license='MIT',
     install_requires=['dataclasses_json', 'requests'],
     setup_requires=['pytest-runner'],
