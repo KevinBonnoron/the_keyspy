@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from dataclasses_json import LetterCase, config, dataclass_json
 import requests
 
-from .devices import TheKeysDevice
-from .devices.lock import TheKeysLock
+from devices import TheKeysDevice
+from devices.lock import TheKeysLock
 
 BASE_URL = "https://api.the-keys.fr"
 
