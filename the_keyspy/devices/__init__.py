@@ -14,6 +14,9 @@ class Action(Enum):
     CLOSE = "close"
     STATUS = "locker_status"
 
+    def __str__(self):
+        return self.value
+
 
 class TheKeysDevice:
     """Base class for all TheKeys devices"""
@@ -33,7 +36,7 @@ class TheKeysDevice:
         hash = base64.b64encode(hmac.new(self.share_code.encode("ascii"), timestamp.encode("ascii"), "sha256").digest())
 
         response = requests.post(
-            f"{self.host}/{action.value}",
+            f"{self.host}/{action}",
             data={"hash": hash, "identifier": self.identifier, "ts": timestamp},
         )
         return response.json()

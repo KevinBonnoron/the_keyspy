@@ -1,11 +1,12 @@
 """The Keys lock device implementation"""
 import logging
+
 from . import Action, TheKeysDevice
 
 OPENED = "Door open"
 CLOSED = "Door closed"
 JAMMED = "Door jammed"
-UNKNOWED = ""
+UNKNOWN = ""
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,10 +18,10 @@ class TheKeysLock(TheKeysDevice):
         super().__init__(
             name=name, host=host, identifier=identifier, share_code=share_code
         )
-        self.locker_status = UNKNOWED
+        self.locker_status = UNKNOWN
         self.__retrieve_lock_status()
 
-    def lock(self) -> None:
+    def lock(self) -> bool:
         """Lock this lock"""
         response = self.action(Action.CLOSE)
         if response["status"] == "ok":
@@ -30,7 +31,7 @@ class TheKeysLock(TheKeysDevice):
 
         return response["status"] == "ok"
 
-    def unlock(self) -> None:
+    def unlock(self) -> bool:
         """Unlock this lock"""
         response = self.action(Action.OPEN)
         if response["status"] == "ok":
