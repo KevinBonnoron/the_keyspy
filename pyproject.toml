@@ -2,4 +2,15 @@
 requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "the_keyspy"
+description = "The Keys Api"
+readme = "README.MD"
+keywords = ["the-keys"]
+license = {text = "MIT"}
+authors = [
+    {name = "Kevin Bonnoron", email = "kevin.bonnoron@gmail.com"},
+]
+dynamic = ["version"]
+
 [tool.setuptools_scm]

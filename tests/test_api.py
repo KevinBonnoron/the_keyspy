@@ -4,7 +4,7 @@ from typing import Any
 
 from http_server_mock import HttpServerMock
 
-from src import TheKeysApi
+from src.the_keyspy import TheKeysApi
 from . import (
     CustomJSONProvider,
     UtilisateurMock,
