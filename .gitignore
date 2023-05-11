@@ -1,4 +1,1 @@
-.pytest_cache
-.eggs
-dist
-the_keyspy.egg-info
+__pycache__
