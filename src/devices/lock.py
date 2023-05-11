@@ -25,7 +25,7 @@ class TheKeysLock(TheKeysDevice):
         self._share_code = share_code
         self._locker_status = UNKNOWN
         self._battery_level = 0
-        self.__retrieve_infos()
+        self.retrieve_infos()
 
     def open(self) -> bool:
         """Open this lock"""
@@ -64,7 +64,7 @@ class TheKeysLock(TheKeysDevice):
     def action(self, action: Action) -> Any:
         return self._gateway.action(action, self._identifier, self._share_code)
 
-    def __retrieve_infos(self) -> None:
+    def retrieve_infos(self) -> None:
         json = self.status()
         if json["status"] == "ko":
             return
@@ -96,7 +96,3 @@ class TheKeysLock(TheKeysDevice):
     def battery_level(self) -> int:
         """The battery percentage"""
         return self._battery_level
-
-    @property
-    def type(self) -> str:
-        return "lock"

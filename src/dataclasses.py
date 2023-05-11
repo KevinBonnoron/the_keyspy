@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from dataclasses_json import LetterCase, config, dataclass_json
 
@@ -39,7 +39,7 @@ class Accessoire:
     updated_at: DatabaseActionDate
     public_key: str
     info: Info
-    configuration: List[Any]
+    configuration: list[Any]
     cfg: Any
 
 
@@ -56,7 +56,7 @@ class SerrureAccessoireAccessoire:
     version: int
     type_version: int
     info: Info
-    configuration: List[Any]
+    configuration: list[Any]
 
 
 @dataclass_json
@@ -140,10 +140,10 @@ class Serrure:
     created_at: DatabaseActionDate
     updated_at: DatabaseActionDate
     log_sequence: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    logs: List[SerrureLog]
+    logs: list[SerrureLog]
     public_key: str
     message: str
-    accessoires: List[SerrureAccessoire]
+    accessoires: list[SerrureAccessoire]
     battery: int
     battery_date: DatabaseActionDate
     door: int
@@ -165,7 +165,7 @@ class UtilisateurSerrureAccessoireAccessoire:
     id_accessoire: str
     nom: str
     type: int
-    configuration: List[Any]
+    configuration: list[Any]
 
 
 @dataclass_json
@@ -218,7 +218,7 @@ class UtilisateurSerrure:
     beta: int
     battery: int
     battery_date: DatabaseActionDate
-    accessoires: List[UtilisateurSerrureAccessoire]
+    accessoires: list[UtilisateurSerrureAccessoire]
     produit: UtilisateurSerrureProduit
 
 
@@ -229,7 +229,7 @@ class Utilisateur:
 
     id: str
     type: str
-    roles: List[str]
+    roles: list[str]
     firstname: str
     lastname: str
     locale: str
@@ -239,7 +239,7 @@ class Utilisateur:
     updated_at: DatabaseActionDate
     notification_token: str
     notification_enabled: bool
-    serrures: List[UtilisateurSerrure]
+    serrures: list[UtilisateurSerrure]
     tel: str
 
 
@@ -276,7 +276,7 @@ class PartageAccessoireAccessoire:
     type: int
     version: int
     type_version: int
-    configuration: List[Any]
+    configuration: list[Any]
 
 
 @dataclass_json
@@ -293,7 +293,7 @@ class PartageCommun:
     heure_fin: Optional[str]
     description: Optional[str]
     notification_enabled: bool
-    horaires: List[Any]
+    horaires: list[Any]
 
 
 @dataclass_json
@@ -322,5 +322,5 @@ class PartageAccessoire(PartageCommun):
 class Partage:
     """Data class for share"""
 
-    partages_utilisateur: List[PartageUtilisateur]
-    partages_accessoire: List[PartageAccessoire]
+    partages_utilisateur: list[PartageUtilisateur]
+    partages_accessoire: list[PartageAccessoire]

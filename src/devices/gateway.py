@@ -1,6 +1,5 @@
 import base64
 import hmac
-import logging
 import time
 from enum import Enum
 from typing import Any
@@ -8,8 +7,6 @@ from typing import Any
 import requests
 
 from .base import TheKeysDevice
-
-_LOGGER = logging.getLogger(__name__)
 
 session = requests.session()
 
@@ -90,7 +87,6 @@ class TheKeysGateway(TheKeysDevice):
 
         json = self.__http_post(url, data) if data else self.__http_get(url)
         if json["status"] == "ko":
-            _LOGGER.error(json)
             raise RuntimeError(json)
 
         return json
@@ -100,7 +96,6 @@ class TheKeysGateway(TheKeysDevice):
             response = session.post(f"http://{self._host}/{url}", data=data)
             return response.json()
         except ConnectionError as error:
-            _LOGGER.error(error)
             raise (error)
 
     def __http_get(self, url) -> Any:
@@ -108,9 +103,4 @@ class TheKeysGateway(TheKeysDevice):
             response = session.get(f"http://{self._host}/{url}")
             return response.json()
         except ConnectionError as error:
-            _LOGGER.error(error)
             raise (error)
-
-    @property
-    def type(self) -> str:
-        return "gateway"

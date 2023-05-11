@@ -2,7 +2,7 @@
 import argparse
 import logging
 
-from the_keyspy import Action, TheKeysApi
+from src import Action, TheKeysApi
 
 parser = argparse.ArgumentParser(description="The Keys CLI")
 parser.add_argument("-t", dest="telephone", help="login", required=True)
