@@ -86,6 +86,9 @@ class TheKeysGateway(TheKeysDevice):
                 url = "status"
 
         json = self.__http_post(url, data) if data else self.__http_get(url)
+        if "status" not in json:
+            json["status"] = "ok"
+
         if json["status"] == "ko":
             raise RuntimeError(json)
 

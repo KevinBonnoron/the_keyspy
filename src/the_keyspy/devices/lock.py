@@ -1,4 +1,5 @@
 """The Keys lock device implementation"""
+import time
 from typing import Any
 
 from .base import TheKeysDevice
@@ -23,17 +24,23 @@ class TheKeysLock(TheKeysDevice):
         self._name = name
         self._identifier = identifier
         self._share_code = share_code
-        self._locker_status = UNKNOWN
-        self._battery_level = 0
+
+        self._status = UNKNOWN
+        self._code = 0
+        self._version = 0
+        self._position = 0
+        self._rssi = 0
+        self._battery = 0
+        self._last_status_update_ts = None
         self.retrieve_infos()
 
     def open(self) -> bool:
         """Open this lock"""
         result = self._gateway.open(self._identifier, self._share_code)
         if result:
-            self._locker_status = OPENED
+            self._status = OPENED
         else:
-            self._locker_status = JAMMED
+            self._status = JAMMED
 
         return result
 
@@ -41,9 +48,9 @@ class TheKeysLock(TheKeysDevice):
         """Close this lock"""
         result = self._gateway.close(self._identifier, self._share_code)
         if result:
-            self._locker_status = CLOSED
+            self._status = CLOSED
         else:
-            self._locker_status = JAMMED
+            self._status = JAMMED
 
         return result
 
@@ -53,7 +60,10 @@ class TheKeysLock(TheKeysDevice):
 
     def status(self) -> Any:
         """Return this lock status"""
-        return self._gateway.locker_status(self._identifier, self._share_code)
+        if self._last_status_update_ts is None or time.time() - self._last_status_update_ts > 60:
+            return self._gateway.locker_status(self._identifier, self._share_code)
+
+        return {"status": self._status, "code": self._code, "id": self._id, "version": self._version, "position": self._position, "rssi": self._rssi, "battery": self._battery}
 
     def synchronize(self) -> Any:
         return self._gateway.synchronize_locker(self._identifier)
@@ -61,16 +71,18 @@ class TheKeysLock(TheKeysDevice):
     def update(self) -> Any:
         return self._gateway.update_locker(self._identifier)
 
-    def action(self, action: Action) -> Any:
-        return self._gateway.action(action, self._identifier, self._share_code)
-
     def retrieve_infos(self) -> None:
         json = self.status()
         if json["status"] == "ko":
             return
 
-        self._locker_status = json["status"]
-        self._battery_level = _map(json["battery"], 5200, 8200, 0, 100)
+        self._status = json["status"]
+        self._code = json["code"]
+        self._version = json["version"]
+        self._position = json["position"]
+        self._rssi = json["rssi"]
+        self._battery = json["battery"]
+        self._last_status_update_ts = time.time()
 
     @property
     def name(self) -> str:
@@ -80,19 +92,19 @@ class TheKeysLock(TheKeysDevice):
     @property
     def is_unlocked(self) -> bool:
         """Is this lock unlocked"""
-        return self._locker_status == OPENED
+        return self._status == OPENED
 
     @property
     def is_locked(self) -> bool:
         """Is this lock locked"""
-        return self._locker_status == CLOSED
+        return self._status == CLOSED
 
     @property
     def is_jammed(self) -> bool:
         """Is this lock jammed"""
-        return self._locker_status == JAMMED
+        return self._status == JAMMED
 
     @property
     def battery_level(self) -> int:
         """The battery percentage"""
-        return self._battery_level
+        return _map(self._battery, 6200, 8000, 0, 100)

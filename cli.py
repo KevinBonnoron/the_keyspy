@@ -2,7 +2,7 @@
 import argparse
 import logging
 
-from src import Action, TheKeysApi
+from src.the_keyspy import Action, TheKeysApi
 
 parser = argparse.ArgumentParser(description="The Keys CLI")
 parser.add_argument("-t", dest="telephone", help="login", required=True)
@@ -15,4 +15,20 @@ args = parser.parse_args()
 logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 with TheKeysApi(args.telephone, args.password) as api:
     for device in api.get_locks():
-        print(device.action(args.action))
+        match args.action:
+            case Action.OPEN:
+                result = device.open()
+            case Action.CLOSE:
+                result = device.close()
+            case Action.CALIBRATE:
+                result = device.calibrate()
+            case Action.LOCKER_STATUS:
+                result = device.status()
+            case Action.SYNCHRONIZE_LOCKER:
+                result = device.synchronize()
+            case Action.UPDATE_LOCKER:
+                result = device.update()
+            case _:
+                result = None
+
+        print(result)

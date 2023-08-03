@@ -72,7 +72,7 @@ def partage_with_one_partage_utilisateur(id_serrure: int):
 
 
 def locker_status():
-    return jsonify({"status": "Door open", "battery": 7235})
+    return jsonify({"status": "Door open", "code": 1, "id": 1, "version": 81, "position": 20, "rssi": 0, "battery": 7235})
 
 
 class TheKeyApiTest(unittest.TestCase):
