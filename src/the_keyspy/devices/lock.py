@@ -32,7 +32,7 @@ class TheKeysLock(TheKeysDevice):
         self._rssi = 0
         self._battery = 0
         self._last_status_update_ts = None
-        self.retrieve_infos()
+        # self.retrieve_infos()
 
     def open(self) -> bool:
         """Open this lock"""

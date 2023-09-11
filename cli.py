@@ -28,6 +28,8 @@ with TheKeysApi(args.telephone, args.password) as api:
                 result = device.synchronize()
             case Action.UPDATE_LOCKER:
                 result = device.update()
+            case Action.STATUS:
+                result = device.status()
             case _:
                 result = None
 

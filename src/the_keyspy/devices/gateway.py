@@ -54,6 +54,9 @@ class TheKeysGateway(TheKeysDevice):
 
     def status(self) -> Any:
         return self.action(Action.STATUS)
+    
+    def update(self) -> Any:
+        return self.action(Action.UPDATE)
 
     def action(self, action: Action, identifier: str = "", share_code: str = "") -> Any:
         data = {}

@@ -303,7 +303,6 @@ class PartageUtilisateur(PartageCommun):
 
     role: PartageUtilisateurRole
     utilisateur: PartageUtilisateurUtilisateur
-    remote_key_sharing_id: int = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass_json

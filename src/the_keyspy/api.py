@@ -48,7 +48,7 @@ class TheKeysApi:
         data["partage_accessoire[nom]"] = share_name
         data["partage_accessoire[iddesc]"] = "remote"
 
-        response = self.__http_post(f"partage/create/{serrure_id}/accessoire/{accessoire.id}", data)["data"]
+        response = self.__http_post(f"partage/create/{serrure_id}/accessoire/{accessoire.id_accessoire}", data)["data"]
         partage_accessoire = {}
         partage_accessoire["id"] = response["id"]
         partage_accessoire["iddesc"] = "remote"
