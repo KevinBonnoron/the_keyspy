@@ -246,7 +246,7 @@ class Utilisateur:
 # Partage
 @dataclass_json
 @dataclass
-class PartageUtilisateurRole:
+class PartageRole:
     """Data class for share role"""
 
     id: int
@@ -262,7 +262,7 @@ class PartageUtilisateurUtilisateur:
     prenom: str
     nom: str
     email: str
-    telephone: str
+    telephone: Optional[str]
 
 
 @dataclass_json
@@ -286,7 +286,6 @@ class PartageCommun:
 
     id: int
     nom: str
-    actif: bool
     date_debut: Optional[str]
     date_fin: Optional[str]
     heure_debut: Optional[str]
@@ -301,7 +300,8 @@ class PartageCommun:
 class PartageUtilisateur(PartageCommun):
     """Data class for user share"""
 
-    role: PartageUtilisateurRole
+    actif: bool
+    role: PartageRole
     utilisateur: PartageUtilisateurUtilisateur
 
 
@@ -312,8 +312,23 @@ class PartageAccessoire(PartageCommun):
 
     iddesc: Optional[str]
     nom: str
+    actif: bool
     accessoire: PartageAccessoireAccessoire
     code: str
+
+
+@dataclass_json
+@dataclass
+class PartageDemandeUtilisateur:
+    telephone: str
+
+
+@dataclass_json
+@dataclass
+class PartageDemande(PartageCommun):
+    role: PartageRole
+    code: str
+    utilisateur: PartageDemandeUtilisateur
 
 
 @dataclass_json
@@ -323,3 +338,4 @@ class Partage:
 
     partages_utilisateur: list[PartageUtilisateur]
     partages_accessoire: list[PartageAccessoire]
+    partages_demande: list[PartageDemande]
