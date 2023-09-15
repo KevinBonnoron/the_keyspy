@@ -262,7 +262,10 @@ class PartageUtilisateurUtilisateur:
     prenom: str
     nom: str
     email: str
-    telephone: Optional[str]
+    telephone: Optional[str] = None
+
+    def __post_init__(self):
+        self.telephone = self.username if self.telephone is None else self.telephone
 
 
 @dataclass_json
