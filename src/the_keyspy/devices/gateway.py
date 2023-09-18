@@ -1,14 +1,12 @@
 import base64
 import hmac
 import time
+import requests
 from enum import Enum
 from typing import Any
 
-import requests
 
 from .base import TheKeysDevice
-
-session = requests.session()
 
 
 class Action(Enum):
@@ -54,7 +52,7 @@ class TheKeysGateway(TheKeysDevice):
 
     def status(self) -> Any:
         return self.action(Action.STATUS)
-    
+
     def update(self) -> Any:
         return self.action(Action.UPDATE)
 
@@ -99,14 +97,16 @@ class TheKeysGateway(TheKeysDevice):
 
     def __http_post(self, url, data) -> Any:
         try:
-            response = session.post(f"http://{self._host}/{url}", data=data)
-            return response.json()
+            with requests.Session() as session:
+                response = session.post(f"http://{self._host}/{url}", data=data)
+                return response.json()
         except ConnectionError as error:
             raise (error)
 
     def __http_get(self, url) -> Any:
         try:
-            response = session.get(f"http://{self._host}/{url}")
-            return response.json()
+            with requests.Session() as session:
+                response = session.get(f"http://{self._host}/{url}")
+                return response.json()
         except ConnectionError as error:
             raise (error)

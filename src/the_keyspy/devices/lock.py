@@ -1,9 +1,8 @@
 """The Keys lock device implementation"""
-import time
 from typing import Any
 
 from .base import TheKeysDevice
-from .gateway import Action, TheKeysGateway
+from .gateway import TheKeysGateway
 
 OPENED = "Door open"
 CLOSED = "Door closed"
@@ -31,8 +30,6 @@ class TheKeysLock(TheKeysDevice):
         self._position = 0
         self._rssi = 0
         self._battery = 0
-        self._last_status_update_ts = None
-        # self.retrieve_infos()
 
     def open(self) -> bool:
         """Open this lock"""
@@ -60,10 +57,7 @@ class TheKeysLock(TheKeysDevice):
 
     def status(self) -> Any:
         """Return this lock status"""
-        if self._last_status_update_ts is None or time.time() - self._last_status_update_ts > 60:
-            return self._gateway.locker_status(self._identifier, self._share_code)
-
-        return {"status": self._status, "code": self._code, "id": self._id, "version": self._version, "position": self._position, "rssi": self._rssi, "battery": self._battery}
+        return self._gateway.locker_status(self._identifier, self._share_code)
 
     def synchronize(self) -> Any:
         return self._gateway.synchronize_locker(self._identifier)
@@ -82,7 +76,6 @@ class TheKeysLock(TheKeysDevice):
         self._position = json["position"]
         self._rssi = json["rssi"]
         self._battery = json["battery"]
-        self._last_status_update_ts = time.time()
 
     @property
     def name(self) -> str:
