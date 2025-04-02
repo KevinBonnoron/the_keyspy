@@ -64,7 +64,8 @@ class TheKeysGateway(TheKeysDevice):
         if share_code != "":
             timestamp = str(int(time.time()))
             data["ts"] = timestamp
-            data["hash"] = base64.b64encode(hmac.new(share_code.encode("ascii"), timestamp.encode("ascii"), "sha256").digest())
+            data["hash"] = base64.b64encode(hmac.new(share_code.encode(
+                "ascii"), timestamp.encode("ascii"), "sha256").digest())
 
         match action:
             case Action.OPEN:
@@ -98,7 +99,8 @@ class TheKeysGateway(TheKeysDevice):
     def __http_post(self, url, data) -> Any:
         try:
             with requests.Session() as session:
-                response = session.post(f"http://{self._host}/{url}", data=data)
+                response = session.post(
+                    f"http://{self._host}/{url}", data=data)
                 return response.json()
         except ConnectionError as error:
             raise (error)

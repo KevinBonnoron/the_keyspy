@@ -100,4 +100,4 @@ class TheKeysLock(TheKeysDevice):
     @property
     def battery_level(self) -> int:
         """The battery percentage"""
-        return _map(self._battery, 6200, 8000, 0, 100)
+        return _map(self._battery, 3600, 8000, 0, 100)

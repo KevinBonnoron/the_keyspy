@@ -48,7 +48,8 @@ class TheKeysApi:
         data["partage_accessoire[nom]"] = share_name
         data["partage_accessoire[iddesc]"] = "remote"
 
-        response = self.__http_post(f"partage/create/{serrure_id}/accessoire/{accessoire.id_accessoire}", data)["data"]
+        response = self.__http_post(
+            f"partage/create/{serrure_id}/accessoire/{accessoire.id_accessoire}", data)["data"]
         partage_accessoire = {}
         partage_accessoire["id"] = response["id"]
         partage_accessoire["iddesc"] = "remote"
@@ -79,7 +80,8 @@ class TheKeysApi:
             if not serrure.accessoires:
                 return devices
 
-            accessoire = next((x for x in serrure.accessoires if x.accessoire.type == ACCESSORY_GATEWAY)).accessoire
+            accessoire = next(
+                (x for x in serrure.accessoires if x.accessoire.type == ACCESSORY_GATEWAY)).accessoire
             if not accessoire:
                 return devices
 
@@ -87,18 +89,23 @@ class TheKeysApi:
             if not gateway_accessoire:
                 return devices
 
-            gateway = TheKeysGateway(gateway_accessoire.id, gateway_accessoire.info.ip)
+            gateway = TheKeysGateway(
+                gateway_accessoire.id, gateway_accessoire.info.ip)
             devices.append(gateway)
 
-            partages_accessoire = self.find_partage_by_lock_id(serrure.id).partages_accessoire
+            partages_accessoire = self.find_partage_by_lock_id(
+                serrure.id).partages_accessoire
             if not partages_accessoire:
                 partages_accessoire = []
 
-            partage = next((x for x in partages_accessoire if x.nom == SHARE_NAME and x.accessoire.id == accessoire.id), None)
+            partage = next((x for x in partages_accessoire if x.nom ==
+                           SHARE_NAME and x.accessoire.id == accessoire.id), None)
             if partage is None:
-                partage = self.create_accessoire_partage_for_serrure_id(serrure.id, share_name, accessoire)
+                partage = self.create_accessoire_partage_for_serrure_id(
+                    serrure.id, share_name, accessoire)
 
-            devices.append(TheKeysLock(serrure.id, gateway, serrure.nom, serrure.id_serrure, partage.code))
+            devices.append(TheKeysLock(serrure.id, gateway,
+                           serrure.nom, serrure.id_serrure, partage.code))
 
         return devices
 
@@ -106,9 +113,10 @@ class TheKeysApi:
         if not self.authenticated:
             self.__authenticate()
 
-        response = requests.get(f"{self._base_url}/fr/api/v2/{url}", headers={"Authorization": f"Bearer {self._access_token}"})
+        response = requests.get(f"{self._base_url}/fr/api/v2/{url}",
+                                headers={"Authorization": f"Bearer {self._access_token}"})
         if response.status_code != 200:
-            raise RuntimeError()
+            raise RuntimeError(response.text)
 
         return response.json()
 
@@ -116,9 +124,10 @@ class TheKeysApi:
         if not self.authenticated:
             self.__authenticate()
 
-        response = requests.post(f"{self._base_url}/fr/api/v2/{url}", headers={"Authorization": f"Bearer {self._access_token}"}, data=data)
+        response = requests.post(f"{self._base_url}/fr/api/v2/{url}", headers={
+                                 "Authorization": f"Bearer {self._access_token}"}, data=data)
         if response.status_code != 200:
-            raise RuntimeError()
+            raise RuntimeError(response.text)
 
         return response.json()
 
@@ -129,7 +138,7 @@ class TheKeysApi:
         )
 
         if response.status_code != 200:
-            raise RuntimeError()
+            raise RuntimeError(response.text)
 
         json = response.json()
         self._access_token = json["access_token"]
