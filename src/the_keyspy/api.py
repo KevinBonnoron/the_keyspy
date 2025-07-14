@@ -1,16 +1,34 @@
 """
 Python library to handle the keys api
 """
-from typing import Any, List
+from typing import Any, List, TypeVar, Type
 
 import requests
+from urllib3 import response
 
 from .dataclasses import Accessoire, Partage, PartageAccessoire, Utilisateur, UtilisateurSerrureAccessoireAccessoire
 from .devices import TheKeysDevice, TheKeysGateway, TheKeysLock
+from .errors import (
+    NoUtilisateurFoundError,
+    TheKeysApiError,
+    NoAccessoriesFoundError,
+    NoGatewayAccessoryFoundError,
+    GatewayAccessoryNotFoundError,
+    NoSharesFoundError,
+)
 
 BASE_URL = "https://api.the-keys.fr"
 SHARE_NAME = "TheKeysPy (Remote)"
 ACCESSORY_GATEWAY = 1
+
+T = TypeVar('T')
+
+
+def deserialize_dataclass(cls: Type[T], data: Any) -> T:
+    """Helper function to deserialize dataclass from dict"""
+    if data is None:
+        raise ValueError("Cannot deserialize None data")
+    return cls.from_dict(data)  # type: ignore
 
 
 class TheKeysApi:
@@ -29,15 +47,28 @@ class TheKeysApi:
 
     def find_utilisateur_by_username(self, username: str) -> Utilisateur:
         """Return user matching the passed username"""
-        return Utilisateur.from_dict(self.__http_get(f"utilisateur/get/{username}")["data"])
+        response_data = self.__http_get(f"utilisateur/get/{username}")["data"]
+        if response_data is None:
+            raise NoUtilisateurFoundError(
+                "User could not be retrieved from the API.")
+        return deserialize_dataclass(Utilisateur, response_data)
 
     def find_accessoire_by_id(self, id: int) -> Accessoire:
         """Return accessory matching the passed id"""
-        return Accessoire.from_dict(self.__http_get(f"accessoire/get/{id}")["data"])
+        response_data = self.__http_get(f"accessoire/get/{id}")["data"]
+        if response_data is None:
+            raise GatewayAccessoryNotFoundError(
+                "Gateway accessory could not be retrieved from the API.")
+        return deserialize_dataclass(Accessoire, response_data)
 
     def find_partage_by_lock_id(self, lock_id: int) -> Partage:
         """Return share matching the passed lock_id"""
-        return Partage.from_dict(self.__http_get(f"partage/all/serrure/{lock_id}")["data"])
+        response_data = self.__http_get(
+            f"partage/all/serrure/{lock_id}")["data"]
+        if response_data is None:
+            raise NoSharesFoundError(
+                "No shares found for this lock.")
+        return deserialize_dataclass(Partage, response_data)
 
     def create_accessoire_partage_for_serrure_id(
         self, serrure_id: int, share_name: str, accessoire: UtilisateurSerrureAccessoireAccessoire
@@ -64,7 +95,7 @@ class TheKeysApi:
         partage_accessoire["accessoire"] = accessoire
         partage_accessoire["horaires"] = []
         partage_accessoire["code"] = response["code"]
-        return PartageAccessoire.from_dict(partage_accessoire)
+        return deserialize_dataclass(PartageAccessoire, partage_accessoire)
 
     def get_locks(self) -> List[TheKeysLock]:
         return list(device for device in self.get_devices() if isinstance(device, TheKeysLock))
@@ -78,16 +109,20 @@ class TheKeysApi:
         user = self.find_utilisateur_by_username(self._username)
         for serrure in user.serrures:
             if not serrure.accessoires:
-                return devices
+                raise NoAccessoriesFoundError(
+                    "No accessories found for this lock.")
 
             accessoire = next(
-                (x for x in serrure.accessoires if x.accessoire.type == ACCESSORY_GATEWAY)).accessoire
+                (x for x in serrure.accessoires if x.accessoire.type == ACCESSORY_GATEWAY), None)
             if not accessoire:
-                return devices
+                raise NoGatewayAccessoryFoundError(
+                    "No gateway accessory found for this lock.")
+            accessoire = accessoire.accessoire
 
             gateway_accessoire = self.find_accessoire_by_id(accessoire.id)
             if not gateway_accessoire:
-                return devices
+                raise GatewayAccessoryNotFoundError(
+                    "Gateway accessory could not be retrieved from the API.")
 
             gateway = TheKeysGateway(
                 gateway_accessoire.id, gateway_accessoire.info.ip)

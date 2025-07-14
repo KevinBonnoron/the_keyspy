@@ -31,7 +31,7 @@ class BaseMock:
 
 
 class HasId:
-    def __init__(self, id: int = None, *args, **kwargs):
+    def __init__(self, id: int = 1, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.with_id(id)
 
@@ -41,7 +41,7 @@ class HasId:
 
 
 class HasUsername:
-    def __init__(self, username: str = None, *args, **kwargs):
+    def __init__(self, username: str = "username", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.with_username(username)
 
@@ -51,7 +51,7 @@ class HasUsername:
 
 
 class HasFirstname:
-    def __init__(self, firstname: str = None, *args, **kwargs):
+    def __init__(self, firstname: str = "firstname", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.with_firstname(firstname)
 
@@ -61,7 +61,7 @@ class HasFirstname:
 
 
 class HasLastname:
-    def __init__(self, lastname: str = None, *args, **kwargs):
+    def __init__(self, lastname: str = "lastname", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.with_lastname(lastname)
 
@@ -158,8 +158,8 @@ class UtilisateurMock(BaseMock, HasId, HasUsername, HasFirstname, HasLastname):
 class AccessoireMock(BaseMock, HasId):
     def __dict__(self):
         return {
-            "id": self._id,
-            "id_accessoire": "1",
+            "id": int(self._id),
+            "id_accessoire": str(self._id),
             "nom": "TK Gateway",
             "description": None,
             "type": 1,

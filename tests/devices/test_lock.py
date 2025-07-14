@@ -1,7 +1,7 @@
 """Test for Lock"""
 
-from src.the_keyspy.devices.lock import TheKeysLock
-from src.the_keyspy.devices.gateway import TheKeysGateway
+from the_keyspy.devices.lock import TheKeysLock
+from the_keyspy.devices.gateway import TheKeysGateway
 
 import unittest
 
