@@ -1,12 +1,15 @@
+from curses import meta
+from .base import TheKeysDevice
 import base64
 import hmac
 import time
 import requests
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
+import logging
 
-from .base import TheKeysDevice
+logger = logging.getLogger("the_keyspy.devices.gateway")
 
 
 class Action(Enum):
@@ -87,28 +90,24 @@ class TheKeysGateway(TheKeysDevice):
             case _:
                 url = "status"
 
-        json = self.__http_post(url, data) if data else self.__http_get(url)
-        if "status" not in json:
-            json["status"] = "ok"
+        response_data = self.__http_request(url, data)
+        if "status" not in response_data:
+            response_data["status"] = "ok"
 
-        if json["status"] == "ko":
-            raise RuntimeError(json)
+        if response_data["status"] == "ko":
+            raise RuntimeError(response_data)
 
-        return json
+        return response_data
 
-    def __http_post(self, url, data) -> Any:
+    def __http_request(self, url: str, data: Optional[dict] = None) -> Any:
+        method = "post" if data else "get"
+        logger.debug("%s %s", method.upper(), url)
         try:
             with requests.Session() as session:
+                full_url = f"http://{self._host}/{url}"
                 response = session.post(
-                    f"http://{self._host}/{url}", data=data)
+                    full_url, data=data) if method == "post" else session.get(full_url)
+                logger.debug("response_data: %s", response.json())
                 return response.json()
         except ConnectionError as error:
-            raise (error)
-
-    def __http_get(self, url) -> Any:
-        try:
-            with requests.Session() as session:
-                response = session.get(f"http://{self._host}/{url}")
-                return response.json()
-        except ConnectionError as error:
-            raise (error)
+            raise error

@@ -1,6 +1,7 @@
 """
 Python library to handle the keys api
 """
+import logging
 from typing import Any, List, TypeVar, Type
 
 import requests
@@ -16,6 +17,8 @@ from .errors import (
     GatewayAccessoryNotFoundError,
     NoSharesFoundError,
 )
+
+logger = logging.getLogger("the_keyspy")
 
 BASE_URL = "https://api.the-keys.fr"
 SHARE_NAME = "TheKeysPy (Remote)"
@@ -144,27 +147,33 @@ class TheKeysApi:
 
         return devices
 
-    def __http_get(self, url: str):
+    def __http_request(self, method: str, url: str, data: Any = None):
         if not self.authenticated:
             self.__authenticate()
 
-        response = requests.get(f"{self._base_url}/fr/api/v2/{url}",
-                                headers={"Authorization": f"Bearer {self._access_token}"})
+        full_url = f"{self._base_url}/fr/api/v2/{url}"
+        headers = {"Authorization": f"Bearer {self._access_token}"}
+
+        logger.debug("%s %s", method.upper(), full_url)
+        if method.lower() == "get":
+            response = requests.get(full_url, headers=headers)
+        elif method.lower() == "post":
+            response = requests.post(full_url, headers=headers, data=data)
+        else:
+            raise ValueError(f"HTTP method non supportée : {method}")
+
         if response.status_code != 200:
             raise RuntimeError(response.text)
 
-        return response.json()
+        json_data = response.json()
+        logger.debug("response_data: %s", json_data)
+        return json_data
+
+    def __http_get(self, url: str):
+        return self.__http_request("get", url)
 
     def __http_post(self, url: str, data: Any):
-        if not self.authenticated:
-            self.__authenticate()
-
-        response = requests.post(f"{self._base_url}/fr/api/v2/{url}", headers={
-                                 "Authorization": f"Bearer {self._access_token}"}, data=data)
-        if response.status_code != 200:
-            raise RuntimeError(response.text)
-
-        return response.json()
+        return self.__http_request("post", url, data)
 
     def __authenticate(self):
         response = requests.post(
