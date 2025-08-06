@@ -1,4 +1,5 @@
 import json
+from typing import Union
 from flask.json.provider import JSONProvider
 
 
@@ -15,7 +16,7 @@ class CustomJSONProvider(JSONProvider):
     def dumps(self, obj, **kwargs):
         return json.dumps(obj, **kwargs, cls=JSON_Improved)
 
-    def loads(self, s: str | bytes, **kwargs):
+    def loads(self, s: Union[str, bytes], **kwargs):
         return json.loads(s, **kwargs)
 
 
@@ -78,7 +79,7 @@ class UtilisateurSerrureAccessoireMock(BaseMock, HasId):
         return {
             "id": self._id,
             "accessoire": {"id": 1, "id_accessoire": "id_accessoire", "nom": "TK Gateway", "type": 1, "configuration": []},
-            "info": None,
+            "info": {"last_seen": "2020-01-01 00:00:00", "ip": "192.168.1.100"},
         }
 
 

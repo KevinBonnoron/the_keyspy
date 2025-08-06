@@ -18,6 +18,11 @@ class GatewayAccessoryNotFoundError(TheKeysApiError):
     pass
 
 
+class NoGatewayIpFoundError(TheKeysApiError):
+    """Raised when no gateway IP is found for a lock."""
+    pass
+
+
 class NoSharesFoundError(TheKeysApiError):
     """Raised when no shares are found for a lock."""
     pass

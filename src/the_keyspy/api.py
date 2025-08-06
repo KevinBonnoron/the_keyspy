@@ -5,13 +5,12 @@ import logging
 from typing import Any, List, TypeVar, Type
 
 import requests
-from urllib3 import response
 
 from .dataclasses import Accessoire, Partage, PartageAccessoire, Utilisateur, UtilisateurSerrureAccessoireAccessoire
 from .devices import TheKeysDevice, TheKeysGateway, TheKeysLock
 from .errors import (
+    NoGatewayIpFoundError,
     NoUtilisateurFoundError,
-    TheKeysApiError,
     NoAccessoriesFoundError,
     NoGatewayAccessoryFoundError,
     GatewayAccessoryNotFoundError,
@@ -115,20 +114,25 @@ class TheKeysApi:
                 raise NoAccessoriesFoundError(
                     "No accessories found for this lock.")
 
-            accessoire = next(
-                (x for x in serrure.accessoires if x.accessoire.type == ACCESSORY_GATEWAY), None)
+            accessoire = next((x for x in serrure.accessoires if x.accessoire.type ==
+                              ACCESSORY_GATEWAY and x.info is not None and x.info.ip is not None), None)
             if not accessoire:
                 raise NoGatewayAccessoryFoundError(
                     "No gateway accessory found for this lock.")
-            accessoire = accessoire.accessoire
 
-            gateway_accessoire = self.find_accessoire_by_id(accessoire.id)
+            gateway_accessoire = self.find_accessoire_by_id(
+                accessoire.accessoire.id)
             if not gateway_accessoire:
                 raise GatewayAccessoryNotFoundError(
                     "Gateway accessory could not be retrieved from the API.")
 
-            gateway = TheKeysGateway(
-                gateway_accessoire.id, gateway_accessoire.info.ip)
+            ip = gateway_accessoire.info.ip or (
+                accessoire.info.ip if accessoire.info else None)
+            if ip is None:
+                raise NoGatewayIpFoundError(
+                    "No gateway IP found for this lock.")
+
+            gateway = TheKeysGateway(gateway_accessoire.id, ip)
             devices.append(gateway)
 
             partages_accessoire = self.find_partage_by_lock_id(
@@ -137,10 +141,10 @@ class TheKeysApi:
                 partages_accessoire = []
 
             partage = next((x for x in partages_accessoire if x.nom ==
-                           SHARE_NAME and x.accessoire.id == accessoire.id), None)
+                           SHARE_NAME and x.accessoire.id == accessoire.accessoire.id), None)
             if partage is None:
                 partage = self.create_accessoire_partage_for_serrure_id(
-                    serrure.id, share_name, accessoire)
+                    serrure.id, share_name, accessoire.accessoire)
 
             devices.append(TheKeysLock(serrure.id, gateway,
                            serrure.nom, serrure.id_serrure, partage.code))

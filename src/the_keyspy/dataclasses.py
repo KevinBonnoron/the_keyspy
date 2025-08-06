@@ -19,7 +19,7 @@ class DatabaseActionDate:
 @dataclass
 class Info:
     last_seen: str
-    ip: str
+    ip: Optional[str]
 
 
 # Accessoire

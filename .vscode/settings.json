@@ -4,13 +4,8 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit"
   },
-  "python.formatting.provider": "none",
-  "python.linting.pylintPath": "venv/bin/pylint",
-  "python.formatting.autopep8Args": [
-    "--max-line-length=200"
-  ],
   "[python]": {
     "editor.tabSize": 4,
     "editor.defaultFormatter": "ms-python.autopep8"
-  },
+  }
 }
