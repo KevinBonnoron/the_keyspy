@@ -19,7 +19,7 @@ class DatabaseActionDate:
 @dataclass
 class Info:
     last_seen: str
-    ip: str
+    ip: Optional[str]
 
 
 # Accessoire
@@ -129,7 +129,8 @@ class Serrure:
     timezone: str
     max_speed: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     latch_delay: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    assisted_actions: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+    assisted_actions: bool = field(
+        metadata=config(letter_case=LetterCase.CAMEL))
     unlock_only: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
     description: Optional[str]
     version: int
@@ -206,7 +207,8 @@ class UtilisateurSerrure:
     timezone: str
     max_speed: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     latch_delay: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    assisted_actions: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+    assisted_actions: bool = field(
+        metadata=config(letter_case=LetterCase.CAMEL))
     unlock_only: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
     description: Optional[str]
     log_sequence: int = field(metadata=config(letter_case=LetterCase.CAMEL))
