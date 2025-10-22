@@ -33,7 +33,7 @@ class TheKeysLock(TheKeysDevice):
 
     def open(self) -> bool:
         """Open this lock"""
-        result = self._gateway.open(self._identifier, self._share_code)
+        result = self._gateway.locker_open(self._identifier, self._share_code)
         if result:
             self._status = OPENED
         else:
@@ -43,7 +43,7 @@ class TheKeysLock(TheKeysDevice):
 
     def close(self) -> bool:
         """Close this lock"""
-        result = self._gateway.close(self._identifier, self._share_code)
+        result = self._gateway.locker_close(self._identifier, self._share_code)
         if result:
             self._status = CLOSED
         else:
@@ -53,19 +53,22 @@ class TheKeysLock(TheKeysDevice):
 
     def calibrate(self) -> bool:
         """Calibrate this lock"""
-        return self._gateway.calibrate(self._identifier, self._share_code)
+        return self._gateway.locker_calibrate(self._identifier, self._share_code)
 
     def status(self) -> Any:
         """Return this lock status"""
         return self._gateway.locker_status(self._identifier, self._share_code)
 
     def synchronize(self) -> Any:
-        return self._gateway.synchronize_locker(self._identifier)
+        """Synchronize this lock"""
+        return self._gateway.locker_synchronize(self._identifier, self._share_code)
 
     def update(self) -> Any:
-        return self._gateway.update_locker(self._identifier)
+        """Update this lock"""
+        return self._gateway.locker_update(self._identifier, self._share_code)
 
     def retrieve_infos(self) -> None:
+        """Retrieve this lock infos"""
         json = self.status()
         if json["status"] == "ko":
             return
@@ -100,4 +103,15 @@ class TheKeysLock(TheKeysDevice):
     @property
     def battery_level(self) -> int:
         """The battery percentage"""
-        return _map(self._battery, 3600, 8000, 0, 100)
+        # Adjusted formula to match real values:
+        # 3600 -> 0%, 7235 -> 45%, 8000 -> 100%
+        if self._battery <= 3600:
+            return 0
+        elif self._battery >= 8000:
+            return 100
+        elif self._battery <= 7235:
+            # Between 3600 and 7235: linear interpolation
+            return int((self._battery - 3600) * 45 / (7235 - 3600))
+        else:
+            # Between 7235 and 8000: linear interpolation
+            return int(45 + (self._battery - 7235) * 55 / (8000 - 7235))

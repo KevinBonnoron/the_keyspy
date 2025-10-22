@@ -14,7 +14,9 @@ class TestLock(unittest.TestCase):
     def test_battery_level(self):
         self.lock._battery = 3600
         self.assertEqual(self.lock.battery_level, 0)
+        self.lock._battery = 5800
+        self.assertEqual(self.lock.battery_level, 27)
+        self.lock._battery = 7235
+        self.assertEqual(self.lock.battery_level, 45)
         self.lock._battery = 8000
         self.assertEqual(self.lock.battery_level, 100)
-        self.lock._battery = 5800
-        self.assertEqual(self.lock.battery_level, 50)

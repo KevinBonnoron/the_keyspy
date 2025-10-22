@@ -36,9 +36,10 @@ def deserialize_dataclass(cls: Type[T], data: Any) -> T:
 class TheKeysApi:
     """TheKeysApi class"""
 
-    def __init__(self, username: str, password: str, base_url=BASE_URL) -> None:
+    def __init__(self, username: str, password: str, gateway_ip: str = '', base_url=BASE_URL) -> None:
         self._username = username
         self._password = password
+        self._gateway_ip = gateway_ip
         self._base_url = base_url
         self._access_token = None
 
@@ -119,7 +120,7 @@ class TheKeysApi:
             for x in serrure.accessoires:
                 if x.accessoire.type == ACCESSORY_GATEWAY:
                     gateway = self.find_accessoire_by_id(x.accessoire.id)
-                    if gateway and gateway.info and gateway.info.ip:
+                    if gateway and gateway.info:
                         gateway_accessoire = gateway
                         accessoire = x
                         break
@@ -128,7 +129,11 @@ class TheKeysApi:
                 raise NoGatewayAccessoryFoundError(
                     "No gateway accessory found for this lock.")
 
-            gateway = TheKeysGateway(gateway_accessoire.id, gateway.info.ip)
+            gateway_ip = self._gateway_ip if self._gateway_ip else gateway_accessoire.info.ip if gateway_accessoire.info and gateway_accessoire.info.ip else None
+            if not gateway_ip:
+                raise NoGatewayIpFoundError("No gateway IP found.")
+
+            gateway = TheKeysGateway(gateway_accessoire.id, gateway_ip)
             devices.append(gateway)
 
             partages_accessoire = self.find_partage_by_lock_id(

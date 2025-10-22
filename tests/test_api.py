@@ -9,6 +9,7 @@ from the_keyspy.errors import (
     NoAccessoriesFoundError,
     NoGatewayAccessoryFoundError,
     GatewayAccessoryNotFoundError,
+    NoGatewayIpFoundError,
     NoUtilisateurFoundError,
     NoSharesFoundError,
 )
@@ -124,8 +125,7 @@ class TheKeyApiTest(unittest.TestCase):
                               None, view_func=utilisateur_without_serrure, methods=["GET"])
         with self.app.run("localhost", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", "http://localhost:5000")
-            # Un utilisateur sans serrure devrait retourner une liste vide, pas lever d'exception
+                "+33123456789", "password", base_url="http://localhost:5000")
             self.assertEqual(controller.get_devices(), [])
 
     def test_utilisateur_with_serrure_without_accessoire(self):
@@ -133,7 +133,7 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=utilisateur_with_serrure_without_accessoire, methods=["GET"])
         with self.app.run("localhost", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", "http://localhost:5000")
+                "+33123456789", "password", base_url="http://localhost:5000")
             with self.assertRaises(NoAccessoriesFoundError):
                 controller.get_devices()
 
@@ -150,7 +150,7 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=locker_status, methods=["POST"])
         with self.app.run("localhost", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", "http://localhost:5000")
+                "+33123456789", "password", base_url="http://localhost:5000")
             self.assertEqual(len(controller.get_devices()), 2)
 
     def test_utilisateur_with_serrure_gateway_partage(self):
@@ -164,7 +164,7 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=locker_status, methods=["POST"])
         with self.app.run("localhost", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", "http://localhost:5000")
+                "+33123456789", "password", base_url="http://localhost:5000")
             self.assertEqual(len(controller.get_devices()), 2)
 
     def test_utilisateur_with_serrure_but_no_gateway_accessory(self):
@@ -172,7 +172,7 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=utilisateur_with_serrure_but_no_gateway_accessory, methods=["GET"])
         with self.app.run("localhost", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", "http://localhost:5000")
+                "+33123456789", "password", base_url="http://localhost:5000")
             with self.assertRaises(NoGatewayAccessoryFoundError):
                 controller.get_devices()
 
@@ -188,7 +188,7 @@ class TheKeyApiTest(unittest.TestCase):
                               None, view_func=accessoire_not_found)
         with self.app.run("localhost", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", "http://localhost:5000")
+                "+33123456789", "password", base_url="http://localhost:5000")
             with self.assertRaises(GatewayAccessoryNotFoundError):
                 controller.get_devices()
 
@@ -197,7 +197,7 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=utilisateur_not_found, methods=["GET"])
         with self.app.run("localhost", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", "http://localhost:5000")
+                "+33123456789", "password", base_url="http://localhost:5000")
             with self.assertRaises(NoUtilisateurFoundError):
                 controller.get_devices()
 
@@ -210,6 +210,62 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=partage_not_found)
         with self.app.run("localhost", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", "http://localhost:5000")
+                "+33123456789", "password", base_url="http://localhost:5000")
             with self.assertRaises(NoSharesFoundError):
+                controller.get_devices()
+
+    def test_gateway_without_ip_but_provided_ip(self):
+        """Test case where API doesn't return gateway IP but IP is provided as parameter"""
+        def utilisateur_with_gateway_without_ip(username: str):
+            serrure = UtilisateurSerrureMock()
+            accessoire = UtilisateurSerrureAccessoireMock()
+            # Simulate gateway accessory without IP in info
+            accessoire.accessoire._info = {"ip": None}
+            serrure.with_accessoire(accessoire)
+            return build_response(UtilisateurMock(username=username).with_serrure(serrure))
+
+        def accessoire_without_ip(id: int):
+            # Return gateway accessory without IP
+            return build_response(AccessoireMock(id, info={"last_seen": "2020-01-01 00:00", "ip": None}))
+
+        self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
+                              view_func=utilisateur_with_gateway_without_ip, methods=["GET"])
+        self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>", None,
+                              view_func=accessoire_without_ip)
+        self.app.add_url_rule("/fr/api/v2/partage/all/serrure/<id_serrure>",
+                              None, view_func=partage_without_partages)
+        self.app.add_url_rule("/fr/api/v2/partage/create/<id_serrure>/accessoire/<id_accessoire>",
+                              None, view_func=create_partage, methods=["POST"])
+        self.app.add_url_rule("/locker_status", None,
+                              view_func=locker_status, methods=["POST"])
+        with self.app.run("localhost", 5000):
+            # Test with provided gateway IP
+            controller = TheKeysApi(
+                "+33123456789", "password", base_url="http://localhost:5000", gateway_ip="192.168.1.100")
+            devices = controller.get_devices()
+            self.assertEqual(len(devices), 2)  # Should work with provided IP
+
+    def test_gateway_without_ip_and_no_provided_ip(self):
+        """Test case where API doesn't return gateway IP and no IP is provided as parameter"""
+        def utilisateur_with_gateway_without_ip(username: str):
+            serrure = UtilisateurSerrureMock()
+            accessoire = UtilisateurSerrureAccessoireMock()
+            # Simulate gateway accessory without IP in info
+            accessoire.accessoire._info = {"ip": None}
+            serrure.with_accessoire(accessoire)
+            return build_response(UtilisateurMock(username=username).with_serrure(serrure))
+
+        def accessoire_without_ip(id: int):
+            # Return gateway accessory without IP
+            return build_response(AccessoireMock(id, info={"last_seen": "2020-01-01 00:00", "ip": None}))
+
+        self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
+                              view_func=utilisateur_with_gateway_without_ip, methods=["GET"])
+        self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>", None,
+                              view_func=accessoire_without_ip)
+        with self.app.run("localhost", 5000):
+            # Test without provided gateway IP
+            controller = TheKeysApi(
+                "+33123456789", "password", base_url="http://localhost:5000", gateway_ip="")
+            with self.assertRaises(NoGatewayIpFoundError):
                 controller.get_devices()

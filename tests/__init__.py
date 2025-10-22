@@ -74,6 +74,7 @@ class HasLastname:
 class UtilisateurSerrureAccessoireMock(BaseMock, HasId):
     def __init__(self, id: int = 1):
         super().__init__(id)
+        self.accessoire = AccessoireMock()
 
     def __dict__(self):
         return {
@@ -157,6 +158,11 @@ class UtilisateurMock(BaseMock, HasId, HasUsername, HasFirstname, HasLastname):
 
 
 class AccessoireMock(BaseMock, HasId):
+    def __init__(self, id: int = 1, info: dict = None):
+        super().__init__(id)
+        self._info = info or {
+            "last_seen": "2020-01-01 00:00", "ip": "127.0.0.1:5000"}
+
     def __dict__(self):
         return {
             "id": int(self._id),
@@ -169,7 +175,7 @@ class AccessoireMock(BaseMock, HasId):
             "created_at": create_database_action_date(),
             "updated_at": create_database_action_date(),
             "public_key": "public_key",
-            "info": {"last_seen": "2020-01-01 00:00", "ip": "127.0.0.1:5000"},
+            "info": self._info,
             "configuration": [],
             "cfg": None,
         }
