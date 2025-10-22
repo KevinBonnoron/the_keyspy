@@ -116,25 +116,35 @@ class TheKeysApi:
                     "No accessories found for this lock.")
 
             accessoire = None
-            gateway_accessoire = None
-            for x in serrure.accessoires:
-                if x.accessoire.type == ACCESSORY_GATEWAY:
-                    gateway = self.find_accessoire_by_id(x.accessoire.id)
-                    if gateway and gateway.info:
-                        gateway_accessoire = gateway
+            if self._gateway_ip != '':
+                for x in serrure.accessoires:
+                    if x.accessoire.type == ACCESSORY_GATEWAY:
                         accessoire = x
                         break
 
-            if not accessoire or not gateway_accessoire:
-                raise NoGatewayAccessoryFoundError(
-                    "No gateway accessory found for this lock.")
+            if accessoire:
+                gateway = TheKeysGateway(1, self._gateway_ip)
+                devices.append(gateway)
+            else:
+                gateway_accessoire = None
+                for x in serrure.accessoires:
+                    if x.accessoire.type == ACCESSORY_GATEWAY:
+                        gateway = self.find_accessoire_by_id(x.accessoire.id)
+                        if gateway and gateway.info:
+                            gateway_accessoire = gateway
+                            accessoire = x
+                            break
 
-            gateway_ip = self._gateway_ip if self._gateway_ip else gateway_accessoire.info.ip if gateway_accessoire.info and gateway_accessoire.info.ip else None
-            if not gateway_ip:
-                raise NoGatewayIpFoundError("No gateway IP found.")
+                if not accessoire or not gateway_accessoire:
+                    raise NoGatewayAccessoryFoundError(
+                        "No gateway accessory found for this lock.")
 
-            gateway = TheKeysGateway(gateway_accessoire.id, gateway_ip)
-            devices.append(gateway)
+                gateway_ip = gateway_accessoire.info.ip if gateway_accessoire.info.ip else None
+                if not gateway_ip:
+                    raise NoGatewayIpFoundError("No gateway IP found.")
+
+                gateway = TheKeysGateway(gateway_accessoire.id, gateway_ip)
+                devices.append(gateway)
 
             partages_accessoire = self.find_partage_by_lock_id(
                 serrure.id).partages_accessoire
