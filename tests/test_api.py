@@ -220,13 +220,13 @@ class TheKeyApiTest(unittest.TestCase):
             serrure = UtilisateurSerrureMock()
             accessoire = UtilisateurSerrureAccessoireMock()
             # Simulate gateway accessory without IP in info
-            accessoire.accessoire._info = {"ip": None}
+            accessoire.accessoire._info = {}
             serrure.with_accessoire(accessoire)
             return build_response(UtilisateurMock(username=username).with_serrure(serrure))
 
         def accessoire_without_ip(id: int):
             # Return gateway accessory without IP
-            return build_response(AccessoireMock(id, info={"last_seen": "2020-01-01 00:00", "ip": None}))
+            return build_response(AccessoireMock(id, info={"last_seen": "2020-01-01 00:00"}))
 
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_with_gateway_without_ip, methods=["GET"])
@@ -251,13 +251,13 @@ class TheKeyApiTest(unittest.TestCase):
             serrure = UtilisateurSerrureMock()
             accessoire = UtilisateurSerrureAccessoireMock()
             # Simulate gateway accessory without IP in info
-            accessoire.accessoire._info = {"ip": None}
+            accessoire.accessoire._info = {}
             serrure.with_accessoire(accessoire)
             return build_response(UtilisateurMock(username=username).with_serrure(serrure))
 
         def accessoire_without_ip(id: int):
             # Return gateway accessory without IP
-            return build_response(AccessoireMock(id, info={"last_seen": "2020-01-01 00:00", "ip": None}))
+            return build_response(AccessoireMock(id, info={"last_seen": "2020-01-01 00:00"}))
 
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_with_gateway_without_ip, methods=["GET"])

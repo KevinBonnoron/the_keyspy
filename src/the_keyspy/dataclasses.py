@@ -19,7 +19,7 @@ class DatabaseActionDate:
 @dataclass
 class Info:
     last_seen: str
-    ip: Optional[str]
+    ip: Optional[str] = field(default=None)
 
 
 # Accessoire
