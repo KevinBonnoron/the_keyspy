@@ -10,7 +10,8 @@ parser.add_argument("-p", dest="password", help="password", required=True)
 parser.add_argument("-a", dest="action", help="action",
                     required=True, type=Action, choices=list(Action))
 parser.add_argument("-d", dest="device", help="device", required=False)
-parser.add_argument("-g", dest="gateway_ip", help="gateway ip", required=False)
+parser.add_argument("-g", dest="gateway_ip",
+                    help="gateway ip", required=False, default="")
 parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING",
                     "ERROR", "CRITICAL"], default="INFO", help="log level (default: INFO)")
 args = parser.parse_args()

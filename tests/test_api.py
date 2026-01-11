@@ -216,6 +216,8 @@ class TheKeyApiTest(unittest.TestCase):
 
     def test_gateway_without_ip_but_provided_ip(self):
         """Test case where API doesn't return gateway IP but IP is provided as parameter"""
+        from . import create_recent_last_seen
+
         def utilisateur_with_gateway_without_ip(username: str):
             serrure = UtilisateurSerrureMock()
             accessoire = UtilisateurSerrureAccessoireMock()
@@ -225,8 +227,8 @@ class TheKeyApiTest(unittest.TestCase):
             return build_response(UtilisateurMock(username=username).with_serrure(serrure))
 
         def accessoire_without_ip(id: int):
-            # Return gateway accessory without IP
-            return build_response(AccessoireMock(id, info={"last_seen": "2020-01-01 00:00"}))
+            # Return gateway accessory without IP but with recent last_seen
+            return build_response(AccessoireMock(id, info={"last_seen": create_recent_last_seen(5)}))
 
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_with_gateway_without_ip, methods=["GET"])
@@ -247,6 +249,8 @@ class TheKeyApiTest(unittest.TestCase):
 
     def test_gateway_without_ip_and_no_provided_ip(self):
         """Test case where API doesn't return gateway IP and no IP is provided as parameter"""
+        from . import create_recent_last_seen
+
         def utilisateur_with_gateway_without_ip(username: str):
             serrure = UtilisateurSerrureMock()
             accessoire = UtilisateurSerrureAccessoireMock()
@@ -256,8 +260,8 @@ class TheKeyApiTest(unittest.TestCase):
             return build_response(UtilisateurMock(username=username).with_serrure(serrure))
 
         def accessoire_without_ip(id: int):
-            # Return gateway accessory without IP
-            return build_response(AccessoireMock(id, info={"last_seen": "2020-01-01 00:00"}))
+            # Return gateway accessory without IP but with recent last_seen
+            return build_response(AccessoireMock(id, info={"last_seen": create_recent_last_seen(5)}))
 
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_with_gateway_without_ip, methods=["GET"])
@@ -269,3 +273,51 @@ class TheKeyApiTest(unittest.TestCase):
                 "+33123456789", "password", base_url="http://localhost:5000", gateway_ip="")
             with self.assertRaises(NoGatewayIpFoundError):
                 controller.get_devices()
+
+    def test_multiple_gateways_select_most_recent(self):
+        """Test that the most recent gateway is selected when multiple gateways exist"""
+        from . import create_recent_last_seen
+
+        def utilisateur_with_multiple_gateways(username: str):
+            serrure = UtilisateurSerrureMock()
+            # Add first gateway seen 5 minutes ago
+            accessoire1 = UtilisateurSerrureAccessoireMock(id=1, minutes_ago=5)
+            # Add second gateway seen 2 minutes ago (more recent)
+            accessoire2 = UtilisateurSerrureAccessoireMock(id=2, minutes_ago=2)
+            # Add third gateway seen 15 minutes ago (too old, should be ignored)
+            accessoire3 = UtilisateurSerrureAccessoireMock(id=3, minutes_ago=15)
+            serrure.with_accessoire(accessoire1)
+            serrure.with_accessoire(accessoire2)
+            serrure.with_accessoire(accessoire3)
+            return build_response(UtilisateurMock(username=username).with_serrure(serrure))
+
+        def accessoire_multiple(id: str):
+            # Flask passes route parameters as strings, convert to int
+            id_int = int(id)
+            # Return different IPs for different gateways
+            if id_int == 1:
+                return build_response(AccessoireMock(id_int, minutes_ago=5))
+            elif id_int == 2:
+                return build_response(AccessoireMock(id_int, minutes_ago=2))
+            else:  # id_int == 3
+                return build_response(AccessoireMock(id_int, minutes_ago=15))
+
+        self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
+                              view_func=utilisateur_with_multiple_gateways, methods=["GET"])
+        self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>", None,
+                              view_func=accessoire_multiple)
+        self.app.add_url_rule("/fr/api/v2/partage/all/serrure/<id_serrure>",
+                              None, view_func=partage_without_partages)
+        self.app.add_url_rule("/fr/api/v2/partage/create/<id_serrure>/accessoire/<id_accessoire>",
+                              None, view_func=create_partage, methods=["POST"])
+        self.app.add_url_rule("/locker_status", None,
+                              view_func=locker_status, methods=["POST"])
+        with self.app.run("localhost", 5000):
+            controller = TheKeysApi(
+                "+33123456789", "password", base_url="http://localhost:5000")
+            devices = controller.get_devices()
+            # Should have 2 devices: 1 gateway (the most recent one with id=2) + 1 lock
+            self.assertEqual(len(devices), 2)
+            # Check that the gateway selected is the most recent one (id=2)
+            gateway = devices[0]
+            self.assertEqual(gateway.id, 2)

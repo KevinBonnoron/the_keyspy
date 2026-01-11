@@ -1,10 +1,18 @@
 import json
 from typing import Union
+from datetime import datetime
 from flask.json.provider import JSONProvider
 
 
 def create_database_action_date():
     return {"date": "2020-01-01 00:00:00.000000", "timezone_type": 3, "timezone": "Europe/Berlin"}
+
+
+def create_recent_last_seen(minutes_ago: int = 0):
+    """Create a last_seen timestamp relative to now"""
+    from datetime import timedelta
+    dt = datetime.now() - timedelta(minutes=minutes_ago)
+    return dt.isoformat()
 
 
 class JSON_Improved(json.JSONEncoder):
@@ -72,15 +80,16 @@ class HasLastname:
 
 
 class UtilisateurSerrureAccessoireMock(BaseMock, HasId):
-    def __init__(self, id: int = 1):
+    def __init__(self, id: int = 1, minutes_ago: int = 0):
         super().__init__(id)
-        self.accessoire = AccessoireMock()
+        self.accessoire = AccessoireMock(id=id)
+        self._minutes_ago = minutes_ago
 
     def __dict__(self):
         return {
             "id": self._id,
-            "accessoire": {"id": 1, "id_accessoire": "id_accessoire", "nom": "TK Gateway", "type": 1, "configuration": []},
-            "info": {"last_seen": "2020-01-01 00:00:00", "ip": "192.168.1.100"},
+            "accessoire": {"id": self._id, "id_accessoire": f"id_accessoire_{self._id}", "nom": "TK Gateway", "type": 1, "configuration": []},
+            "info": {"last_seen": create_recent_last_seen(self._minutes_ago), "ip": f"192.168.1.{100 + self._id}"},
         }
 
 
@@ -158,10 +167,13 @@ class UtilisateurMock(BaseMock, HasId, HasUsername, HasFirstname, HasLastname):
 
 
 class AccessoireMock(BaseMock, HasId):
-    def __init__(self, id: int = 1, info: dict = None):
+    def __init__(self, id: int = 1, info: dict = None, minutes_ago: int = 0):
         super().__init__(id)
-        self._info = info or {
-            "last_seen": "2020-01-01 00:00", "ip": "127.0.0.1:5000"}
+        if info is not None:
+            self._info = info
+        else:
+            self._info = {
+                "last_seen": create_recent_last_seen(minutes_ago), "ip": "127.0.0.1:5000"}
 
     def __dict__(self):
         return {

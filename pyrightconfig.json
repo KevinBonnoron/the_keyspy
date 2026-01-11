@@ -18,11 +18,11 @@
   "executionEnvironments": [
     {
       "root": "src",
-      "pythonVersion": "3.8"
+      "pythonVersion": "3.11"
     },
     {
       "root": "tests",
-      "pythonVersion": "3.8",
+      "pythonVersion": "3.11",
       "extraPaths": [
         "src"
       ]

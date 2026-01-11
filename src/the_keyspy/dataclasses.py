@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Optional
 
 from dataclasses_json import LetterCase, config, dataclass_json
@@ -18,7 +19,8 @@ class DatabaseActionDate:
 @dataclass_json
 @dataclass
 class Info:
-    last_seen: str
+    last_seen: datetime = field(metadata=config(
+        encoder=datetime.isoformat, decoder=datetime.fromisoformat))
     ip: Optional[str] = field(default=None)
 
 

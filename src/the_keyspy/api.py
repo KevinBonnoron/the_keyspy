@@ -1,9 +1,10 @@
 """
 Python library to handle the keys api
 """
+from __future__ import annotations
+from typing import Any, List, TypeVar, Type, Optional
+from datetime import datetime, timedelta
 import logging
-from typing import Any, List, TypeVar, Type
-
 import requests
 
 from .dataclasses import Accessoire, Partage, PartageAccessoire, Utilisateur, UtilisateurSerrureAccessoireAccessoire
@@ -22,6 +23,7 @@ logger = logging.getLogger("the_keyspy")
 BASE_URL = "https://api.the-keys.fr"
 SHARE_NAME = "TheKeysPy (Remote)"
 ACCESSORY_GATEWAY = 1
+ACCESSORY_REMOTE = 3
 
 T = TypeVar('T')
 
@@ -110,34 +112,45 @@ class TheKeysApi:
         """Return all devices"""
         devices = []
         user = self.find_utilisateur_by_username(self._username)
-        for serrure in user.serrures:
-            if not serrure.accessoires:
-                raise NoAccessoriesFoundError(
-                    "No accessories found for this lock.")
 
+        # Return empty list if user has no locks
+        if not user.serrures:
+            return []
+
+        serrures_with_accessoires = [serrure for serrure in user.serrures if hasattr(
+            serrure, 'accessoires') and serrure.accessoires]
+        if not serrures_with_accessoires:
+            raise NoAccessoriesFoundError(
+                "No accessories found for this user.")
+
+        for serrure in serrures_with_accessoires:
             accessoire = None
+
             if self._gateway_ip != '':
-                for x in serrure.accessoires:
-                    if x.accessoire.type == ACCESSORY_GATEWAY:
-                        accessoire = x
-                        break
+                # Manual IP provided, use first gateway accessory without checking info
+                gateway_accessoires = list(
+                    filter(lambda x: x.accessoire.type == ACCESSORY_GATEWAY, serrure.accessoires))
+                if gateway_accessoires:
+                    accessoire = gateway_accessoires[0]
+                    gateway = TheKeysGateway(1, self._gateway_ip)
+                    devices.append(gateway)
 
-            if accessoire:
-                gateway = TheKeysGateway(1, self._gateway_ip)
-                devices.append(gateway)
-            else:
-                gateway_accessoire = None
-                for x in serrure.accessoires:
-                    if x.accessoire.type == ACCESSORY_GATEWAY:
-                        gateway = self.find_accessoire_by_id(x.accessoire.id)
-                        if gateway and gateway.info:
-                            gateway_accessoire = gateway
-                            accessoire = x
-                            break
+            if not accessoire:
+                # No manual IP or accessoire not found, fetch gateway info from API
+                gateway_accessoires = filter(
+                    lambda x: x.accessoire.type == ACCESSORY_GATEWAY, serrure.accessoires)
 
-                if not accessoire or not gateway_accessoire:
+                # Collect all valid gateways (seen in last 10 minutes) and select the most recent
+                valid_gateways = [(gw, x) for x in gateway_accessoires if (gw := self.find_accessoire_by_id(
+                    x.accessoire.id)) and gw.info and gw.info.last_seen > datetime.now() - timedelta(minutes=10)]
+
+                if not valid_gateways:
                     raise NoGatewayAccessoryFoundError(
                         "No gateway accessory found for this lock.")
+
+                # Select the most recently seen gateway
+                gateway_accessoire, accessoire = max(
+                    valid_gateways, key=lambda g: g[0].info.last_seen)
 
                 gateway_ip = gateway_accessoire.info.ip if gateway_accessoire.info.ip else None
                 if not gateway_ip:
