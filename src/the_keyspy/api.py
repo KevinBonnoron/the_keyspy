@@ -38,7 +38,7 @@ def deserialize_dataclass(cls: Type[T], data: Any) -> T:
 class TheKeysApi:
     """TheKeysApi class"""
 
-    def __init__(self, username: str, password: str, gateway_ip: str = '', base_url=BASE_URL) -> None:
+    def __init__(self, username: str, password: str, gateway_ip: Optional[str] = None, base_url=BASE_URL) -> None:
         self._username = username
         self._password = password
         self._gateway_ip = gateway_ip
@@ -126,7 +126,7 @@ class TheKeysApi:
         for serrure in serrures_with_accessoires:
             accessoire = None
 
-            if self._gateway_ip != '':
+            if self._gateway_ip:
                 # Manual IP provided, use first gateway accessory without checking info
                 gateway_accessoires = list(
                     filter(lambda x: x.accessoire.type == ACCESSORY_GATEWAY, serrure.accessoires))

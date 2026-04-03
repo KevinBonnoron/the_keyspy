@@ -270,7 +270,7 @@ class TheKeyApiTest(unittest.TestCase):
         with self.app.run("localhost", 5000):
             # Test without provided gateway IP
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000", gateway_ip="")
+                "+33123456789", "password", base_url="http://localhost:5000")
             with self.assertRaises(NoGatewayIpFoundError):
                 controller.get_devices()
 
