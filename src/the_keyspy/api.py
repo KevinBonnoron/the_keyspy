@@ -1,21 +1,30 @@
 """
 Python library to handle the keys api
 """
+
 from __future__ import annotations
-from typing import Any, List, TypeVar, Type, Optional
-from datetime import datetime, timedelta
+
 import logging
+from datetime import datetime, timedelta
+from typing import Any, List, Optional, Type, TypeVar
+
 import requests
 
-from .dataclasses import Accessoire, Partage, PartageAccessoire, Utilisateur, UtilisateurSerrureAccessoireAccessoire
+from .dataclasses import (
+    Accessoire,
+    Partage,
+    PartageAccessoire,
+    Utilisateur,
+    UtilisateurSerrureAccessoireAccessoire,
+)
 from .devices import TheKeysDevice, TheKeysGateway, TheKeysLock
 from .errors import (
-    NoGatewayIpFoundError,
-    NoUtilisateurFoundError,
+    GatewayAccessoryNotFoundError,
     NoAccessoriesFoundError,
     NoGatewayAccessoryFoundError,
-    GatewayAccessoryNotFoundError,
+    NoGatewayIpFoundError,
     NoSharesFoundError,
+    NoUtilisateurFoundError,
 )
 
 logger = logging.getLogger("the_keyspy")
@@ -25,7 +34,7 @@ SHARE_NAME = "TheKeysPy (Remote)"
 ACCESSORY_GATEWAY = 1
 ACCESSORY_REMOTE = 3
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def deserialize_dataclass(cls: Type[T], data: Any) -> T:
@@ -38,7 +47,13 @@ def deserialize_dataclass(cls: Type[T], data: Any) -> T:
 class TheKeysApi:
     """TheKeysApi class"""
 
-    def __init__(self, username: str, password: str, gateway_ip: Optional[str] = None, base_url=BASE_URL) -> None:
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        gateway_ip: Optional[str] = None,
+        base_url=BASE_URL,
+    ) -> None:
         self._username = username
         self._password = password
         self._gateway_ip = gateway_ip
@@ -48,14 +63,13 @@ class TheKeysApi:
     @property
     def authenticated(self):
         """Get the token"""
-        return not self._access_token is None
+        return self._access_token is not None
 
     def find_utilisateur_by_username(self, username: str) -> Utilisateur:
         """Return user matching the passed username"""
         response_data = self.__http_get(f"utilisateur/get/{username}")["data"]
         if response_data is None:
-            raise NoUtilisateurFoundError(
-                "User could not be retrieved from the API.")
+            raise NoUtilisateurFoundError("User could not be retrieved from the API.")
         return deserialize_dataclass(Utilisateur, response_data)
 
     def find_accessoire_by_id(self, id: int) -> Accessoire:
@@ -63,20 +77,22 @@ class TheKeysApi:
         response_data = self.__http_get(f"accessoire/get/{id}")["data"]
         if response_data is None:
             raise GatewayAccessoryNotFoundError(
-                "Gateway accessory could not be retrieved from the API.")
+                "Gateway accessory could not be retrieved from the API."
+            )
         return deserialize_dataclass(Accessoire, response_data)
 
     def find_partage_by_lock_id(self, lock_id: int) -> Partage:
         """Return share matching the passed lock_id"""
-        response_data = self.__http_get(
-            f"partage/all/serrure/{lock_id}")["data"]
+        response_data = self.__http_get(f"partage/all/serrure/{lock_id}")["data"]
         if response_data is None:
-            raise NoSharesFoundError(
-                "No shares found for this lock.")
+            raise NoSharesFoundError("No shares found for this lock.")
         return deserialize_dataclass(Partage, response_data)
 
     def create_accessoire_partage_for_serrure_id(
-        self, serrure_id: int, share_name: str, accessoire: UtilisateurSerrureAccessoireAccessoire
+        self,
+        serrure_id: int,
+        share_name: str,
+        accessoire: UtilisateurSerrureAccessoireAccessoire,
     ) -> PartageAccessoire:
         """Create a share for the passed serrure_id and accessoire"""
         data = {}
@@ -85,7 +101,8 @@ class TheKeysApi:
         data["partage_accessoire[iddesc]"] = "remote"
 
         response = self.__http_post(
-            f"partage/create/{serrure_id}/accessoire/{accessoire.id_accessoire}", data)["data"]
+            f"partage/create/{serrure_id}/accessoire/{accessoire.id_accessoire}", data
+        )["data"]
         partage_accessoire = {}
         partage_accessoire["id"] = response["id"]
         partage_accessoire["iddesc"] = "remote"
@@ -103,10 +120,16 @@ class TheKeysApi:
         return deserialize_dataclass(PartageAccessoire, partage_accessoire)
 
     def get_locks(self) -> List[TheKeysLock]:
-        return list(device for device in self.get_devices() if isinstance(device, TheKeysLock))
+        return list(
+            device for device in self.get_devices() if isinstance(device, TheKeysLock)
+        )
 
     def get_gateways(self) -> List[TheKeysGateway]:
-        return list(device for device in self.get_devices() if isinstance(device, TheKeysGateway))
+        return list(
+            device
+            for device in self.get_devices()
+            if isinstance(device, TheKeysGateway)
+        )
 
     def get_devices(self, share_name=SHARE_NAME) -> List[TheKeysDevice]:
         """Return all devices"""
@@ -117,11 +140,13 @@ class TheKeysApi:
         if not user.serrures:
             return []
 
-        serrures_with_accessoires = [serrure for serrure in user.serrures if hasattr(
-            serrure, 'accessoires') and serrure.accessoires]
+        serrures_with_accessoires = [
+            serrure
+            for serrure in user.serrures
+            if hasattr(serrure, "accessoires") and serrure.accessoires
+        ]
         if not serrures_with_accessoires:
-            raise NoAccessoriesFoundError(
-                "No accessories found for this user.")
+            raise NoAccessoriesFoundError("No accessories found for this user.")
 
         for serrure in serrures_with_accessoires:
             accessoire = None
@@ -129,51 +154,80 @@ class TheKeysApi:
             if self._gateway_ip:
                 # Manual IP provided, use first gateway accessory without checking info
                 gateway_accessoires = list(
-                    filter(lambda x: x.accessoire.type == ACCESSORY_GATEWAY, serrure.accessoires))
+                    filter(
+                        lambda x: x.accessoire.type == ACCESSORY_GATEWAY,
+                        serrure.accessoires,
+                    )
+                )
                 if gateway_accessoires:
                     accessoire = gateway_accessoires[0]
                     gateway = TheKeysGateway(1, self._gateway_ip)
                     devices.append(gateway)
 
             if not accessoire:
-                # No manual IP or accessoire not found, fetch gateway info from API
-                gateway_accessoires = filter(
-                    lambda x: x.accessoire.type == ACCESSORY_GATEWAY, serrure.accessoires)
-
-                # Collect all valid gateways (seen in last 10 minutes) and select the most recent
-                valid_gateways = [(gw, x) for x in gateway_accessoires if (gw := self.find_accessoire_by_id(
-                    x.accessoire.id)) and gw.info and gw.info.last_seen > datetime.now() - timedelta(minutes=10)]
-
-                if not valid_gateways:
-                    raise NoGatewayAccessoryFoundError(
-                        "No gateway accessory found for this lock.")
-
-                # Select the most recently seen gateway
-                gateway_accessoire, accessoire = max(
-                    valid_gateways, key=lambda g: g[0].info.last_seen)
-
-                gateway_ip = gateway_accessoire.info.ip if gateway_accessoire.info.ip else None
-                if not gateway_ip:
-                    raise NoGatewayIpFoundError("No gateway IP found.")
-
-                gateway = TheKeysGateway(gateway_accessoire.id, gateway_ip)
+                gateway, accessoire = self._find_best_gateway(serrure)
                 devices.append(gateway)
 
             partages_accessoire = self.find_partage_by_lock_id(
-                serrure.id).partages_accessoire
+                serrure.id
+            ).partages_accessoire
             if not partages_accessoire:
                 partages_accessoire = []
 
-            partage = next((x for x in partages_accessoire if x.nom ==
-                           SHARE_NAME and x.accessoire.id == accessoire.accessoire.id), None)
+            partage = next(
+                (
+                    x
+                    for x in partages_accessoire
+                    if x.nom == SHARE_NAME
+                    and x.accessoire.id == accessoire.accessoire.id
+                ),
+                None,
+            )
             if partage is None:
                 partage = self.create_accessoire_partage_for_serrure_id(
-                    serrure.id, share_name, accessoire.accessoire)
+                    serrure.id, share_name, accessoire.accessoire
+                )
 
-            devices.append(TheKeysLock(serrure.id, gateway,
-                           serrure.nom, serrure.id_serrure, partage.code))
+            devices.append(
+                TheKeysLock(
+                    serrure.id, gateway, serrure.nom, serrure.id_serrure, partage.code
+                )
+            )
 
         return devices
+
+    def _find_best_gateway(self, serrure) -> tuple[TheKeysGateway, Any]:
+        """Find the most recently seen gateway for a lock."""
+        gateway_accessoires = [
+            x for x in serrure.accessoires if x.accessoire.type == ACCESSORY_GATEWAY
+        ]
+        if not gateway_accessoires:
+            raise NoGatewayAccessoryFoundError(
+                "No gateway accessory found for this lock."
+            )
+
+        cutoff = datetime.now() - timedelta(hours=24)
+        valid_gateways = []
+        for x in gateway_accessoires:
+            gw = self.find_accessoire_by_id(x.accessoire.id)
+            if gw and gw.info and gw.info.last_seen > cutoff:
+                valid_gateways.append((gw, x))
+
+        if not valid_gateways:
+            raise NoGatewayAccessoryFoundError(
+                "No gateway has been seen in the last 24 hours."
+            )
+
+        gateway_accessoire, accessoire = max(
+            valid_gateways, key=lambda g: g[0].info.last_seen
+        )
+
+        if not gateway_accessoire.info.ip:
+            raise NoGatewayIpFoundError("No gateway IP found.")
+
+        return TheKeysGateway(
+            gateway_accessoire.id, gateway_accessoire.info.ip
+        ), accessoire
 
     def __http_request(self, method: str, url: str, data: Any = None):
         if not self.authenticated:

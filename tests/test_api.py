@@ -274,6 +274,29 @@ class TheKeyApiTest(unittest.TestCase):
             with self.assertRaises(NoGatewayIpFoundError):
                 controller.get_devices()
 
+    def test_gateway_not_seen_recently(self):
+        """Test that an error is raised when the gateway hasn't been seen in 24 hours"""
+        def utilisateur_with_old_gateway(username: str):
+            serrure = UtilisateurSerrureMock()
+            # Gateway last seen 25 hours ago
+            accessoire = UtilisateurSerrureAccessoireMock(id=1, minutes_ago=25 * 60)
+            serrure.with_accessoire(accessoire)
+            return build_response(UtilisateurMock(username=username).with_serrure(serrure))
+
+        def accessoire_old(id: str):
+            return build_response(AccessoireMock(int(id), minutes_ago=25 * 60))
+
+        self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
+                              view_func=utilisateur_with_old_gateway, methods=["GET"])
+        self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>", None,
+                              view_func=accessoire_old)
+        with self.app.run("localhost", 5000):
+            controller = TheKeysApi(
+                "+33123456789", "password", base_url="http://localhost:5000")
+            with self.assertRaises(NoGatewayAccessoryFoundError) as ctx:
+                controller.get_devices()
+            self.assertIn("24 hours", str(ctx.exception))
+
     def test_multiple_gateways_select_most_recent(self):
         """Test that the most recent gateway is selected when multiple gateways exist"""
         from . import create_recent_last_seen
@@ -284,8 +307,8 @@ class TheKeyApiTest(unittest.TestCase):
             accessoire1 = UtilisateurSerrureAccessoireMock(id=1, minutes_ago=5)
             # Add second gateway seen 2 minutes ago (more recent)
             accessoire2 = UtilisateurSerrureAccessoireMock(id=2, minutes_ago=2)
-            # Add third gateway seen 15 minutes ago (too old, should be ignored)
-            accessoire3 = UtilisateurSerrureAccessoireMock(id=3, minutes_ago=15)
+            # Add third gateway seen 25 hours ago (too old, should be ignored)
+            accessoire3 = UtilisateurSerrureAccessoireMock(id=3, minutes_ago=25 * 60)
             serrure.with_accessoire(accessoire1)
             serrure.with_accessoire(accessoire2)
             serrure.with_accessoire(accessoire3)
@@ -300,7 +323,7 @@ class TheKeyApiTest(unittest.TestCase):
             elif id_int == 2:
                 return build_response(AccessoireMock(id_int, minutes_ago=2))
             else:  # id_int == 3
-                return build_response(AccessoireMock(id_int, minutes_ago=15))
+                return build_response(AccessoireMock(id_int, minutes_ago=25 * 60))
 
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_with_multiple_gateways, methods=["GET"])
