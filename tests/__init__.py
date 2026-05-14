@@ -223,14 +223,15 @@ class PartageUtilisateurMock(BaseMock, HasId, HasUsername, HasFirstname, HasLast
 
 
 class PartageAccessoireMock(BaseMock, HasId):
-    def __init__(self, id: int = 1):
+    def __init__(self, id: int = 1, nom: str = "TheKeysPy (Remote)"):
         super().__init__(id=id)
+        self._nom = nom
 
     def __dict__(self):
         return {
             "id": self._id,
             "iddesc": "remote",
-            "nom": "TheKeysPy (Remote)",
+            "nom": self._nom,
             "actif": True,
             "date_debut": None,
             "date_fin": None,
