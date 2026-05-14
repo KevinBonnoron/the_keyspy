@@ -1,9 +1,9 @@
 """Test for Lock"""
 
-from the_keyspy.devices.lock import TheKeysLock
-from the_keyspy.devices.gateway import TheKeysGateway
-
 import unittest
+
+from the_keyspy.devices.gateway import TheKeysGateway
+from the_keyspy.devices.lock import TheKeysLock
 
 
 class TestLock(unittest.TestCase):

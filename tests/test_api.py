@@ -2,28 +2,29 @@
 import unittest
 from typing import Any
 
+from flask import jsonify
 from http_server_mock import HttpServerMock
 
 from the_keyspy import TheKeysApi
 from the_keyspy.errors import (
+    GatewayAccessoryNotFoundError,
     NoAccessoriesFoundError,
     NoGatewayAccessoryFoundError,
-    GatewayAccessoryNotFoundError,
     NoGatewayIpFoundError,
-    NoUtilisateurFoundError,
     NoSharesFoundError,
+    NoUtilisateurFoundError,
 )
+
 from . import (
-    CustomJSONProvider,
-    UtilisateurMock,
-    UtilisateurSerrureMock,
-    UtilisateurSerrureAccessoireMock,
     AccessoireMock,
+    CustomJSONProvider,
+    PartageAccessoireMock,
     PartageMock,
     PartageUtilisateurMock,
-    PartageAccessoireMock,
+    UtilisateurMock,
+    UtilisateurSerrureAccessoireMock,
+    UtilisateurSerrureMock,
 )
-from flask import jsonify
 
 
 def login_check():
@@ -299,8 +300,6 @@ class TheKeyApiTest(unittest.TestCase):
 
     def test_multiple_gateways_select_most_recent(self):
         """Test that the most recent gateway is selected when multiple gateways exist"""
-        from . import create_recent_last_seen
-
         def utilisateur_with_multiple_gateways(username: str):
             serrure = UtilisateurSerrureMock()
             # Add first gateway seen 5 minutes ago

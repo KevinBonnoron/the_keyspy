@@ -9,7 +9,6 @@ from http_server_mock import HttpServerMock
 from the_keyspy.devices.gateway import GATEWAY_HTTP_TIMEOUT, TheKeysGateway
 from the_keyspy.errors import GatewayTimeInvalidError, GatewayUnreachableError
 
-
 GATEWAY_HOST = "127.0.0.1:5001"
 IDENTIFIER = "identifier"
 SHARE_CODE = "share_code"
