@@ -10,14 +10,21 @@ JAMMED = "Door jammed"
 UNKNOWN = ""
 
 
-def _map(x, in_min, in_max, out_min, out_max):
+def _map(x: float, in_min: float, in_max: float, out_min: float, out_max: float) -> int:
     return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
 
 class TheKeysLock(TheKeysDevice):
     """Lock device implementation"""
 
-    def __init__(self, id: int, gateway: TheKeysGateway, name: str, identifier: str, share_code: str) -> None:
+    def __init__(
+        self,
+        id: int,
+        gateway: TheKeysGateway,
+        name: str,
+        identifier: str,
+        share_code: str,
+    ) -> None:
         super().__init__(id)
         self._gateway = gateway
         self._name = name
@@ -104,11 +111,8 @@ class TheKeysLock(TheKeysDevice):
         # 3600 -> 0%, 7235 -> 45%, 8000 -> 100%
         if self._battery <= 3600:
             return 0
-        elif self._battery >= 8000:
+        if self._battery >= 8000:
             return 100
-        elif self._battery <= 7235:
-            # Between 3600 and 7235: linear interpolation
+        if self._battery <= 7235:
             return int((self._battery - 3600) * 45 / (7235 - 3600))
-        else:
-            # Between 7235 and 8000: linear interpolation
-            return int(45 + (self._battery - 7235) * 55 / (8000 - 7235))
+        return int(45 + (self._battery - 7235) * 55 / (8000 - 7235))

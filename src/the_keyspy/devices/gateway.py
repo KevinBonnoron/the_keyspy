@@ -1,18 +1,23 @@
-from .base import TheKeysDevice
+"""TheKeys gateway device implementation."""
 import base64
 import hmac
-import time
-import requests
-from enum import Enum
-from typing import Any, Optional
-
 import logging
+import time
+from enum import Enum
+from typing import Any, Optional, cast
 
-from ..errors import GatewayTimeInvalidError
+import requests
+
+from .base import TheKeysDevice
+from ..errors import GatewayTimeInvalidError, GatewayUnreachableError
 
 logger = logging.getLogger("the_keyspy.devices.gateway")
 
 GATEWAY_TIME_INVALID_CODE = 38
+
+# (connect, read) timeouts in seconds. The BLE relay makes "normal" calls take
+# ~3s; 15s read leaves headroom without exceeding the typical 30s polling cycle.
+GATEWAY_HTTP_TIMEOUT = (5, 15)
 
 
 class Action(Enum):
@@ -29,7 +34,7 @@ class Action(Enum):
     LOCKER_SYNCHRONIZE = "locker_synchronize"
     LOCKER_UPDATE = "locker_update"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 
@@ -45,33 +50,45 @@ class TheKeysGateway(TheKeysDevice):
         return self.action(Action.STATUS)
 
     def update(self) -> bool:
-        return self.action(Action.UPDATE)["status"] == "ok"
+        return cast(bool, self.action(Action.UPDATE)["status"] == "ok")
 
     def synchronize(self) -> bool:
-        return self.action(Action.SYNCHRONIZE)["status"] == "ok"
+        return cast(bool, self.action(Action.SYNCHRONIZE)["status"] == "ok")
 
     # Locker actions
     def locker_open(self, identifier: str, share_code: str) -> bool:
-        return self.action(Action.LOCKER_OPEN, identifier, share_code)["status"] == "ok"
+        return cast(bool, self.action(Action.LOCKER_OPEN, identifier, share_code)["status"] == "ok")
 
     def locker_close(self, identifier: str, share_code: str) -> bool:
-        return self.action(Action.LOCKER_CLOSE, identifier, share_code)["status"] == "ok"
+        return cast(bool, self.action(Action.LOCKER_CLOSE, identifier, share_code)["status"] == "ok")
 
     def locker_calibrate(self, identifier: str, share_code: str) -> bool:
-        return self.action(Action.LOCKER_CALIBRATE, identifier, share_code)["status"] == "ok"
+        return cast(bool, self.action(Action.LOCKER_CALIBRATE, identifier, share_code)["status"] == "ok")
 
     def locker_status(self, identifier: str, share_code: str) -> Any:
         return self.action(Action.LOCKER_STATUS, identifier, share_code)
 
     def locker_synchronize(self, identifier: str, share_code: str) -> bool:
-        return self.action(Action.LOCKER_SYNCHRONIZE, identifier, share_code)["status"] == "ok"
+        return cast(bool, self.action(Action.LOCKER_SYNCHRONIZE, identifier, share_code)["status"] == "ok")
 
     def locker_update(self, identifier: str, share_code: str) -> bool:
-        return self.action(Action.LOCKER_UPDATE, identifier, share_code)["status"] == "ok"
+        return cast(bool, self.action(Action.LOCKER_UPDATE, identifier, share_code)["status"] == "ok")
 
     # Common actions
     def action(self, action: Action, identifier: str = "", share_code: str = "") -> Any:
         return self._action(action, identifier, share_code, retried=False)
+
+    _ACTION_URLS: dict = {
+        Action.STATUS: "status",
+        Action.UPDATE: "update",
+        Action.SYNCHRONIZE: "synchronize",
+        Action.LOCKER_OPEN: "open",
+        Action.LOCKER_CLOSE: "close",
+        Action.LOCKER_CALIBRATE: "calibrate",
+        Action.LOCKER_STATUS: "locker_status",
+        Action.LOCKER_SYNCHRONIZE: "locker/synchronize",
+        Action.LOCKER_UPDATE: "locker/update",
+    }
 
     def _action(self, action: Action, identifier: str, share_code: str, retried: bool) -> Any:
         data: dict = {}
@@ -84,27 +101,9 @@ class TheKeysGateway(TheKeysDevice):
             data["hash"] = base64.b64encode(hmac.new(share_code.encode(
                 "ascii"), timestamp.encode("ascii"), "sha256").digest())
 
-        url = "status"
-        match action:
-            case Action.STATUS:
-                url = "status"
-            case Action.UPDATE:
-                url = "update"
-                data = {"fake": True}
-            case Action.SYNCHRONIZE:
-                url = "synchronize"
-            case Action.LOCKER_OPEN:
-                url = "open"
-            case Action.LOCKER_CLOSE:
-                url = "close"
-            case Action.LOCKER_CALIBRATE:
-                url = "calibrate"
-            case Action.LOCKER_STATUS:
-                url = "locker_status"
-            case Action.LOCKER_SYNCHRONIZE:
-                url = "locker/synchronize"
-            case Action.LOCKER_UPDATE:
-                url = "locker/update"
+        url = self._ACTION_URLS[action]
+        if action is Action.UPDATE:
+            data = {"fake": True}
 
         response_data = self.__http_request(url, data)
         if "status" not in response_data:
@@ -133,12 +132,14 @@ class TheKeysGateway(TheKeysDevice):
     def __http_request(self, url: str, data: Optional[dict] = None) -> Any:
         method = "post" if data else "get"
         logger.debug("%s %s", method.upper(), url)
+        full_url = f"http://{self._host}/{url}"
         try:
             with requests.Session() as session:
-                full_url = f"http://{self._host}/{url}"
-                response = session.post(
-                    full_url, data=data) if method == "post" else session.get(full_url)
+                if method == "post":
+                    response = session.post(full_url, data=data, timeout=GATEWAY_HTTP_TIMEOUT)
+                else:
+                    response = session.get(full_url, timeout=GATEWAY_HTTP_TIMEOUT)
                 logger.debug("response_data: %s", response.json())
                 return response.json()
-        except ConnectionError as error:
-            raise error
+        except (requests.Timeout, requests.ConnectionError) as error:
+            raise GatewayUnreachableError(self._host, error) from error

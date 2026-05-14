@@ -268,7 +268,7 @@ class PartageUtilisateurUtilisateur:
     email: str
     telephone: Optional[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.telephone = self.username if self.telephone is None else self.telephone
 
 
