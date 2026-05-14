@@ -182,7 +182,7 @@ class TheKeysApi:
                 (
                     x
                     for x in partages_accessoire
-                    if x.nom == SHARE_NAME
+                    if x.nom == share_name
                     and x.accessoire.id == accessoire.accessoire.id
                 ),
                 None,
