@@ -123,17 +123,17 @@ class TheKeyApiTest(unittest.TestCase):
     def test_utilisateur_without_serrure(self):
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>",
                               None, view_func=utilisateur_without_serrure, methods=["GET"])
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             self.assertEqual(controller.get_devices(), [])
 
     def test_utilisateur_with_serrure_without_accessoire(self):
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_with_serrure_without_accessoire, methods=["GET"])
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             with self.assertRaises(NoAccessoriesFoundError):
                 controller.get_devices()
 
@@ -148,9 +148,9 @@ class TheKeyApiTest(unittest.TestCase):
                               None, view_func=create_partage, methods=["POST"])
         self.app.add_url_rule("/locker_status", None,
                               view_func=locker_status, methods=["POST"])
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             self.assertEqual(len(controller.get_devices()), 2)
 
     def test_utilisateur_with_serrure_gateway_partage(self):
@@ -162,17 +162,17 @@ class TheKeyApiTest(unittest.TestCase):
                               None, view_func=partage_with_one_partage_utilisateur)
         self.app.add_url_rule("/locker_status", None,
                               view_func=locker_status, methods=["POST"])
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             self.assertEqual(len(controller.get_devices()), 2)
 
     def test_utilisateur_with_serrure_but_no_gateway_accessory(self):
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_with_serrure_but_no_gateway_accessory, methods=["GET"])
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             with self.assertRaises(NoGatewayAccessoryFoundError):
                 controller.get_devices()
 
@@ -186,18 +186,18 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=utilisateur_with_gateway_but_accessoire_not_found, methods=["GET"])
         self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>",
                               None, view_func=accessoire_not_found)
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             with self.assertRaises(GatewayAccessoryNotFoundError):
                 controller.get_devices()
 
     def test_utilisateur_not_found(self):
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_not_found, methods=["GET"])
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             with self.assertRaises(NoUtilisateurFoundError):
                 controller.get_devices()
 
@@ -208,9 +208,9 @@ class TheKeyApiTest(unittest.TestCase):
             "/fr/api/v2/accessoire/get/<id>", None, view_func=accessoire)
         self.app.add_url_rule("/fr/api/v2/partage/all/serrure/<id_serrure>", None,
                               view_func=partage_not_found)
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             with self.assertRaises(NoSharesFoundError):
                 controller.get_devices()
 
@@ -240,10 +240,10 @@ class TheKeyApiTest(unittest.TestCase):
                               None, view_func=create_partage, methods=["POST"])
         self.app.add_url_rule("/locker_status", None,
                               view_func=locker_status, methods=["POST"])
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             # Test with provided gateway IP
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000", gateway_ip="192.168.1.100")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000", gateway_ip="192.168.1.100")
             devices = controller.get_devices()
             self.assertEqual(len(devices), 2)  # Should work with provided IP
 
@@ -267,10 +267,10 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=utilisateur_with_gateway_without_ip, methods=["GET"])
         self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>", None,
                               view_func=accessoire_without_ip)
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             # Test without provided gateway IP
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             with self.assertRaises(NoGatewayIpFoundError):
                 controller.get_devices()
 
@@ -290,9 +290,9 @@ class TheKeyApiTest(unittest.TestCase):
                               view_func=utilisateur_with_old_gateway, methods=["GET"])
         self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>", None,
                               view_func=accessoire_old)
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             with self.assertRaises(NoGatewayAccessoryFoundError) as ctx:
                 controller.get_devices()
             self.assertIn("24 hours", str(ctx.exception))
@@ -335,9 +335,9 @@ class TheKeyApiTest(unittest.TestCase):
                               None, view_func=create_partage, methods=["POST"])
         self.app.add_url_rule("/locker_status", None,
                               view_func=locker_status, methods=["POST"])
-        with self.app.run("localhost", 5000):
+        with self.app.run("127.0.0.1", 5000):
             controller = TheKeysApi(
-                "+33123456789", "password", base_url="http://localhost:5000")
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
             devices = controller.get_devices()
             # Should have 2 devices: 1 gateway (the most recent one with id=2) + 1 lock
             self.assertEqual(len(devices), 2)
