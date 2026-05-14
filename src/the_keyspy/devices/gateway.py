@@ -8,8 +8,8 @@ from typing import Any, Optional, cast
 
 import requests
 
-from .base import TheKeysDevice
 from ..errors import GatewayTimeInvalidError, GatewayUnreachableError
+from .base import TheKeysDevice
 
 logger = logging.getLogger("the_keyspy.devices.gateway")
 

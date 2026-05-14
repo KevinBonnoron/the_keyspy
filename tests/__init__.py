@@ -1,6 +1,7 @@
 import json
-from typing import Union
 from datetime import datetime
+from typing import Union
+
 from flask.json.provider import JSONProvider
 
 
