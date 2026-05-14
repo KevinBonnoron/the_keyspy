@@ -33,6 +33,7 @@ BASE_URL = "https://api.the-keys.fr"
 SHARE_NAME = "TheKeysPy (Remote)"
 ACCESSORY_GATEWAY = 1
 ACCESSORY_REMOTE = 3
+HTTP_TIMEOUT = 10
 
 T = TypeVar("T")
 
@@ -52,16 +53,17 @@ class TheKeysApi:
         username: str,
         password: str,
         gateway_ip: Optional[str] = None,
-        base_url=BASE_URL,
+        base_url: str = BASE_URL,
     ) -> None:
         self._username = username
         self._password = password
         self._gateway_ip = gateway_ip
         self._base_url = base_url
-        self._access_token = None
+        self._access_token: Optional[str] = None
+        self.expires_in: Optional[int] = None
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         """Get the token"""
         return self._access_token is not None
 
@@ -120,20 +122,22 @@ class TheKeysApi:
         return deserialize_dataclass(PartageAccessoire, partage_accessoire)
 
     def get_locks(self) -> List[TheKeysLock]:
+        """Return only the locks managed by this user."""
         return list(
             device for device in self.get_devices() if isinstance(device, TheKeysLock)
         )
 
     def get_gateways(self) -> List[TheKeysGateway]:
+        """Return only the gateways managed by this user."""
         return list(
             device
             for device in self.get_devices()
             if isinstance(device, TheKeysGateway)
         )
 
-    def get_devices(self, share_name=SHARE_NAME) -> List[TheKeysDevice]:
+    def get_devices(self, share_name: str = SHARE_NAME) -> List[TheKeysDevice]:
         """Return all devices"""
-        devices = []
+        devices: List[TheKeysDevice] = []
         user = self.find_utilisateur_by_username(self._username)
 
         # Return empty list if user has no locks
@@ -196,7 +200,7 @@ class TheKeysApi:
 
         return devices
 
-    def _find_best_gateway(self, serrure) -> tuple[TheKeysGateway, Any]:
+    def _find_best_gateway(self, serrure: Any) -> tuple[TheKeysGateway, Any]:
         """Find the most recently seen gateway for a lock."""
         gateway_accessoires = [
             x for x in serrure.accessoires if x.accessoire.type == ACCESSORY_GATEWAY
@@ -229,7 +233,7 @@ class TheKeysApi:
             gateway_accessoire.id, gateway_accessoire.info.ip
         ), accessoire
 
-    def __http_request(self, method: str, url: str, data: Any = None):
+    def __http_request(self, method: str, url: str, data: Any = None) -> Any:
         if not self.authenticated:
             self.__authenticate()
 
@@ -238,9 +242,9 @@ class TheKeysApi:
 
         logger.debug("%s %s", method.upper(), full_url)
         if method.lower() == "get":
-            response = requests.get(full_url, headers=headers)
+            response = requests.get(full_url, headers=headers, timeout=HTTP_TIMEOUT)
         elif method.lower() == "post":
-            response = requests.post(full_url, headers=headers, data=data)
+            response = requests.post(full_url, headers=headers, data=data, timeout=HTTP_TIMEOUT)
         else:
             raise ValueError(f"HTTP method non supportée : {method}")
 
@@ -251,16 +255,17 @@ class TheKeysApi:
         logger.debug("response_data: %s", json_data)
         return json_data
 
-    def __http_get(self, url: str):
+    def __http_get(self, url: str) -> Any:
         return self.__http_request("get", url)
 
-    def __http_post(self, url: str, data: Any):
+    def __http_post(self, url: str, data: Any) -> Any:
         return self.__http_request("post", url, data)
 
-    def __authenticate(self):
+    def __authenticate(self) -> None:
         response = requests.post(
             f"{self._base_url}/api/login_check",
             data={"_username": self._username, "_password": self._password},
+            timeout=HTTP_TIMEOUT,
         )
 
         if response.status_code != 200:
@@ -270,10 +275,10 @@ class TheKeysApi:
         self._access_token = json["access_token"]
         self.expires_in = json["expires_in"]
 
-    def __enter__(self):
+    def __enter__(self) -> "TheKeysApi":
         return self
 
-    def __exit__(self, exception_type, exception_value, traceback):
+    def __exit__(self, exception_type: Any, exception_value: Any, traceback: Any) -> bool:
         if exception_type is not None:
             print(exception_type, exception_value)
 
