@@ -168,6 +168,45 @@ class TheKeyApiTest(unittest.TestCase):
                 "+33123456789", "password", base_url="http://127.0.0.1:5000")
             self.assertEqual(len(controller.get_devices()), 2)
 
+    def test_get_devices_custom_share_name_reuses_existing(self):
+        """A custom share_name must be used both to look up and (if missing) create.
+
+        Regression: lookup previously compared against the SHARE_NAME constant,
+        so a custom share_name never matched an existing partage and the
+        create_partage endpoint was hit on every call → duplicate shares.
+        """
+        custom_name = "MyCustomShare"
+        create_calls = {"count": 0}
+
+        def partage_with_custom_name(id_serrure: int):
+            return build_response(
+                PartageMock()
+                .with_partage_utilisateur(PartageUtilisateurMock())
+                .with_partage_accessoire(PartageAccessoireMock(nom=custom_name))
+            )
+
+        def create_partage_counting(id_serrure: int, id_accessoire: str):
+            create_calls["count"] += 1
+            return build_response({"id": 2, "code": "code"})
+
+        self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
+                              view_func=utilisateur_with_serrure_and_gateway, methods=["GET"])
+        self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>",
+                              None, view_func=accessoire)
+        self.app.add_url_rule("/fr/api/v2/partage/all/serrure/<id_serrure>",
+                              None, view_func=partage_with_custom_name)
+        self.app.add_url_rule("/fr/api/v2/partage/create/<id_serrure>/accessoire/<id_accessoire>",
+                              None, view_func=create_partage_counting, methods=["POST"])
+        self.app.add_url_rule("/locker_status", None,
+                              view_func=locker_status, methods=["POST"])
+        with self.app.run("127.0.0.1", 5000):
+            controller = TheKeysApi(
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
+            devices = controller.get_devices(share_name=custom_name)
+
+        self.assertEqual(len(devices), 2)
+        self.assertEqual(create_calls["count"], 0)
+
     def test_utilisateur_with_serrure_but_no_gateway_accessory(self):
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
                               view_func=utilisateur_with_serrure_but_no_gateway_accessory, methods=["GET"])
