@@ -19,6 +19,7 @@ args = parser.parse_args()
 logging.basicConfig(level=args.log_level,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 with TheKeysApi(args.telephone, args.password, args.gateway_ip) as api:
+    result = None
     if args.action in [Action.STATUS, Action.UPDATE, Action.SYNCHRONIZE]:
         for device in api.get_gateways():
             match args.action:
@@ -28,21 +29,28 @@ with TheKeysApi(args.telephone, args.password, args.gateway_ip) as api:
                     result = device.update()
                 case Action.SYNCHRONIZE:
                     result = device.synchronize()
-                case _:
-                    result = None
 
-    if args.action in [Action.LOCKER_STATUS, Action.LOCKER_SYNCHRONIZE, Action.LOCKER_UPDATE]:
+    if args.action in [
+        Action.LOCKER_OPEN,
+        Action.LOCKER_CLOSE,
+        Action.LOCKER_CALIBRATE,
+        Action.LOCKER_STATUS,
+        Action.LOCKER_SYNCHRONIZE,
+        Action.LOCKER_UPDATE,
+    ]:
         for device in api.get_locks():
             match args.action:
-                case Action.LOCKER_SYNCHRONIZE:
-                    result = device.synchronize()
+                case Action.LOCKER_OPEN:
+                    result = device.open()
+                case Action.LOCKER_CLOSE:
+                    result = device.close()
+                case Action.LOCKER_CALIBRATE:
+                    result = device.calibrate()
                 case Action.LOCKER_STATUS:
                     result = device.status()
                 case Action.LOCKER_SYNCHRONIZE:
                     result = device.synchronize()
                 case Action.LOCKER_UPDATE:
                     result = device.update()
-                case _:
-                    result = None
 
     print(result)
