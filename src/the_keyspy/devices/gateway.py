@@ -1,4 +1,3 @@
-from curses import meta
 from .base import TheKeysDevice
 import base64
 import hmac
@@ -9,7 +8,11 @@ from typing import Any, Optional
 
 import logging
 
+from ..errors import GatewayTimeInvalidError
+
 logger = logging.getLogger("the_keyspy.devices.gateway")
+
+GATEWAY_TIME_INVALID_CODE = 38
 
 
 class Action(Enum):
@@ -68,7 +71,10 @@ class TheKeysGateway(TheKeysDevice):
 
     # Common actions
     def action(self, action: Action, identifier: str = "", share_code: str = "") -> Any:
-        data = {}
+        return self._action(action, identifier, share_code, retried=False)
+
+    def _action(self, action: Action, identifier: str, share_code: str, retried: bool) -> Any:
+        data: dict = {}
         if identifier != "":
             data["identifier"] = identifier
 
@@ -105,6 +111,21 @@ class TheKeysGateway(TheKeysDevice):
             response_data["status"] = "ok"
 
         if response_data["status"] == "ko":
+            if (
+                response_data.get("code") == GATEWAY_TIME_INVALID_CODE
+                and action is not Action.SYNCHRONIZE
+                and not retried
+            ):
+                logger.warning(
+                    "Gateway time invalid (code %s); resynchronizing and retrying %s",
+                    GATEWAY_TIME_INVALID_CODE, action,
+                )
+                self.synchronize()
+                retry_response = self._action(action, identifier, share_code, retried=True)
+                return retry_response
+
+            if response_data.get("code") == GATEWAY_TIME_INVALID_CODE:
+                raise GatewayTimeInvalidError(response_data)
             raise RuntimeError(response_data)
 
         return response_data

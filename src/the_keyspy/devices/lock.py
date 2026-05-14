@@ -70,9 +70,6 @@ class TheKeysLock(TheKeysDevice):
     def retrieve_infos(self) -> None:
         """Retrieve this lock infos"""
         json = self.status()
-        if json["status"] == "ko":
-            return
-
         self._status = json["status"]
         self._code = json["code"]
         self._version = json["version"]
