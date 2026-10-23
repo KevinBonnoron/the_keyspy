@@ -278,8 +278,5 @@ class TheKeysApi:
     def __enter__(self) -> "TheKeysApi":
         return self
 
-    def __exit__(self, exception_type: Any, exception_value: Any, traceback: Any) -> bool:
-        if exception_type is not None:
-            print(exception_type, exception_value)
-
-        return True
+    def __exit__(self, exception_type: Any, exception_value: Any, traceback: Any) -> None:
+        return None
