@@ -52,3 +52,30 @@ class GatewayTimeInvalidError(TheKeysApiError, RuntimeError):
     def __init__(self, response_data: dict) -> None:
         super().__init__(response_data)
         self.response_data = response_data
+
+
+class LockerSyncError(TheKeysApiError, RuntimeError):
+    """Raised when the gateway repeatedly fails to talk to the lock over BLE.
+
+    Covers codes 1-5 returned by the gateway when the gateway-to-lock BLE
+    relay fails (lock not detected, BLE timeout, sync data invalid, etc.).
+    Inherits from RuntimeError for backward compatibility with callers that
+    used to catch the raw RuntimeError raised by gateway.action().
+    """
+
+    # Codes 1-4 come from the official TheKeys KB; code 5 is observed in
+    # practice on transient BLE failures and treated the same way.
+    MESSAGES = {
+        1: "Lock not detected",
+        2: "Lock not compatible",
+        3: "Invalid synchronization data",
+        4: "Error during synchronization",
+        5: "Synchronization error (BLE transient)",
+    }
+
+    def __init__(self, code: int, response_data: dict) -> None:
+        description = self.MESSAGES.get(code, f"Unknown sync error code {code}")
+        super().__init__(f"Locker sync failed (code {code}): {description}")
+        self.code = code
+        self.response_data = response_data
+

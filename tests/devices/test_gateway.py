@@ -1,13 +1,21 @@
 """Tests for TheKeysGateway, especially the resync+retry on code 38."""
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import requests
 from flask import jsonify
 from http_server_mock import HttpServerMock
 
-from the_keyspy.devices.gateway import GATEWAY_HTTP_TIMEOUT, TheKeysGateway
-from the_keyspy.errors import GatewayTimeInvalidError, GatewayUnreachableError
+from the_keyspy.devices.gateway import (
+    GATEWAY_HTTP_TIMEOUT,
+    SYNC_BACKOFFS_SECONDS,
+    TheKeysGateway,
+)
+from the_keyspy.errors import (
+    GatewayTimeInvalidError,
+    GatewayUnreachableError,
+    LockerSyncError,
+)
 
 GATEWAY_HOST = "127.0.0.1:5001"
 IDENTIFIER = "identifier"
@@ -32,6 +40,10 @@ def _gateway_time_invalid_payload():
         "code": 38,
         "cause": "Gateway time is invalid. Should resynchronize",
     }
+
+
+def _sync_error_payload(code: int):
+    return {"status": "ko", "code": code}
 
 
 class TestGatewayActionRetry(unittest.TestCase):
@@ -168,6 +180,76 @@ class TestGatewayActionRetry(unittest.TestCase):
         # Exactly one HTTP call total: the failing locker_status. No synchronize.
         self.assertEqual(mock_session.post.call_count, 1)
         self.assertEqual(mock_session.get.call_count, 0)
+
+    def test_locker_sync_error_code_4_retries_then_succeeds(self) -> None:
+        """Code 4 on a locker action triggers a backoff retry; eventual success returns ok."""
+        def locker_status():
+            self.locker_status_calls += 1
+            if self.locker_status_calls == 1:
+                return jsonify(_sync_error_payload(4))
+            return jsonify(_ok_locker_status_payload())
+
+        self.app.add_url_rule(
+            "/locker_status", None, view_func=locker_status, methods=["POST"]
+        )
+
+        with patch("the_keyspy.devices.gateway.time.sleep") as mock_sleep, \
+                self.app.run("127.0.0.1", 5001):
+            result = self.gateway.locker_status(IDENTIFIER, SHARE_CODE)
+
+        self.assertEqual(result["code"], 1)
+        self.assertEqual(self.locker_status_calls, 2)
+        mock_sleep.assert_called_once_with(SYNC_BACKOFFS_SECONDS[0])
+
+    def test_locker_sync_error_codes_oscillate_then_succeed(self) -> None:
+        """Codes 4 and 5 on consecutive attempts (as observed in prod) eventually succeed."""
+        responses = [
+            _sync_error_payload(4),
+            _sync_error_payload(5),
+            _ok_locker_status_payload(),
+        ]
+
+        def locker_status():
+            self.locker_status_calls += 1
+            return jsonify(responses[self.locker_status_calls - 1])
+
+        self.app.add_url_rule(
+            "/locker_status", None, view_func=locker_status, methods=["POST"]
+        )
+
+        with patch("the_keyspy.devices.gateway.time.sleep") as mock_sleep, \
+                self.app.run("127.0.0.1", 5001):
+            result = self.gateway.locker_status(IDENTIFIER, SHARE_CODE)
+
+        self.assertEqual(result["code"], 1)
+        self.assertEqual(self.locker_status_calls, 3)
+        # Two backoffs, in order.
+        self.assertEqual(
+            mock_sleep.call_args_list,
+            [call(SYNC_BACKOFFS_SECONDS[0]), call(SYNC_BACKOFFS_SECONDS[1])],
+        )
+
+    def test_locker_sync_error_persists_raises_typed_error(self) -> None:
+        """All retries exhausted on code 5 raises LockerSyncError carrying the code."""
+        def locker_status():
+            self.locker_status_calls += 1
+            return jsonify(_sync_error_payload(5))
+
+        self.app.add_url_rule(
+            "/locker_status", None, view_func=locker_status, methods=["POST"]
+        )
+
+        with patch("the_keyspy.devices.gateway.time.sleep"), \
+                self.app.run("127.0.0.1", 5001):
+            with self.assertRaises(LockerSyncError) as ctx:
+                self.gateway.locker_status(IDENTIFIER, SHARE_CODE)
+
+        # Initial call + one per backoff slot.
+        self.assertEqual(self.locker_status_calls, 1 + len(SYNC_BACKOFFS_SECONDS))
+        self.assertEqual(ctx.exception.code, 5)
+        self.assertEqual(ctx.exception.response_data, _sync_error_payload(5))
+        # Backward compat with the previous RuntimeError contract.
+        self.assertIsInstance(ctx.exception, RuntimeError)
 
     def test_synchronize_returning_code_38_does_not_retry(self):
         """If /synchronize itself returns code 38, we must NOT recurse."""

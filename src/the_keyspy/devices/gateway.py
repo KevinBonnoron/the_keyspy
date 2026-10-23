@@ -8,12 +8,24 @@ from typing import Any, Optional, cast
 
 import requests
 
-from ..errors import GatewayTimeInvalidError, GatewayUnreachableError
+from ..errors import (
+    GatewayTimeInvalidError,
+    GatewayUnreachableError,
+    LockerSyncError,
+)
 from .base import TheKeysDevice
 
 logger = logging.getLogger("the_keyspy.devices.gateway")
 
 GATEWAY_TIME_INVALID_CODE = 38
+
+# Codes returned when the gateway-to-lock BLE relay fails. Transient in
+# practice (codes oscillate between runs), so we retry with backoff.
+LOCKER_SYNC_ERROR_CODES = frozenset({1, 2, 3, 4, 5})
+
+# Per-attempt backoffs in seconds; len defines the max retry count.
+# Total worst-case sleep is sum(SYNC_BACKOFFS_SECONDS) before raising.
+SYNC_BACKOFFS_SECONDS = (1, 2, 4)
 
 # (connect, read) timeouts in seconds. The BLE relay makes "normal" calls take
 # ~3s; 15s read leaves headroom without exceeding the typical 30s polling cycle.
@@ -76,7 +88,7 @@ class TheKeysGateway(TheKeysDevice):
 
     # Common actions
     def action(self, action: Action, identifier: str = "", share_code: str = "") -> Any:
-        return self._action(action, identifier, share_code, retried=False)
+        return self._action(action, identifier, share_code, sync_attempt=0, time_resynced=False)
 
     _ACTION_URLS: dict = {
         Action.STATUS: "status",
@@ -90,7 +102,14 @@ class TheKeysGateway(TheKeysDevice):
         Action.LOCKER_UPDATE: "locker/update",
     }
 
-    def _action(self, action: Action, identifier: str, share_code: str, retried: bool) -> Any:
+    def _action(
+        self,
+        action: Action,
+        identifier: str,
+        share_code: str,
+        sync_attempt: int,
+        time_resynced: bool,
+    ) -> Any:
         data: dict = {}
         if identifier != "":
             data["identifier"] = identifier
@@ -109,25 +128,43 @@ class TheKeysGateway(TheKeysDevice):
         if "status" not in response_data:
             response_data["status"] = "ok"
 
-        if response_data["status"] == "ko":
-            if (
-                response_data.get("code") == GATEWAY_TIME_INVALID_CODE
-                and action is not Action.SYNCHRONIZE
-                and not retried
-            ):
-                logger.warning(
-                    "Gateway time invalid (code %s); resynchronizing and retrying %s",
-                    GATEWAY_TIME_INVALID_CODE, action,
-                )
-                self.synchronize()
-                retry_response = self._action(action, identifier, share_code, retried=True)
-                return retry_response
+        if response_data["status"] != "ko":
+            return response_data
 
-            if response_data.get("code") == GATEWAY_TIME_INVALID_CODE:
-                raise GatewayTimeInvalidError(response_data)
-            raise RuntimeError(response_data)
+        code = response_data.get("code")
 
-        return response_data
+        # Code 38: one-shot gateway resync, then retry the original request.
+        if (
+            code == GATEWAY_TIME_INVALID_CODE
+            and action is not Action.SYNCHRONIZE
+            and not time_resynced
+        ):
+            logger.warning(
+                "Gateway time invalid (code %s); resynchronizing and retrying %s",
+                GATEWAY_TIME_INVALID_CODE, action,
+            )
+            self.synchronize()
+            return self._action(action, identifier, share_code,
+                                sync_attempt=sync_attempt, time_resynced=True)
+
+        # Codes 1-5: BLE relay failed to talk to the lock. Transient, retry
+        # the same call with backoff (codes oscillate between runs in practice).
+        if code in LOCKER_SYNC_ERROR_CODES and sync_attempt < len(SYNC_BACKOFFS_SECONDS):
+            backoff = SYNC_BACKOFFS_SECONDS[sync_attempt]
+            logger.warning(
+                "Locker sync failed (code %s) on %s; retry %s/%s in %ss",
+                code, action, sync_attempt + 1, len(SYNC_BACKOFFS_SECONDS), backoff,
+            )
+            time.sleep(backoff)
+            return self._action(action, identifier, share_code,
+                                sync_attempt=sync_attempt + 1, time_resynced=time_resynced)
+
+        # No more retries available, raise a typed error.
+        if code == GATEWAY_TIME_INVALID_CODE:
+            raise GatewayTimeInvalidError(response_data)
+        if code in LOCKER_SYNC_ERROR_CODES:
+            raise LockerSyncError(code, response_data)
+        raise RuntimeError(response_data)
 
     def __http_request(self, url: str, data: Optional[dict] = None) -> Any:
         method = "post" if data else "get"
