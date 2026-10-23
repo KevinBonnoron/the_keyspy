@@ -79,3 +79,29 @@ class LockerSyncError(TheKeysApiError, RuntimeError):
         self.code = code
         self.response_data = response_data
 
+
+class InvalidResponseError(TheKeysApiError):
+    """Raised when the cloud API or the gateway returns a body that is not valid JSON."""
+
+    def __init__(self, url: str, status_code: int, body: str) -> None:
+        excerpt = body[:200] if body else "<empty body>"
+        super().__init__(f"Invalid response from {url} (HTTP {status_code}): {excerpt}")
+        self.url = url
+        self.status_code = status_code
+        self.body = body
+
+
+class GatewayActionError(TheKeysApiError, RuntimeError):
+    """Raised when the gateway answers an action with status "ko" and an unhandled code.
+
+    Inherits from RuntimeError for backward compatibility with callers that
+    used to catch the raw RuntimeError raised by gateway.action().
+    """
+
+    def __init__(self, action: str, response_data: dict) -> None:
+        self.code = response_data.get("code")
+        cause = response_data.get("cause")
+        message = f"Gateway action {action} failed (code {self.code})"
+        super().__init__(f"{message}: {cause}" if cause else message)
+        self.action = action
+        self.response_data = response_data

@@ -26,6 +26,7 @@ from .errors import (
     NoSharesFoundError,
     NoUtilisateurFoundError,
 )
+from .utils import parse_json
 
 logger = logging.getLogger("the_keyspy")
 
@@ -251,7 +252,7 @@ class TheKeysApi:
         if response.status_code != 200:
             raise RuntimeError(response.text)
 
-        json_data = response.json()
+        json_data = parse_json(response)
         logger.debug("response_data: %s", json_data)
         return json_data
 
@@ -271,7 +272,7 @@ class TheKeysApi:
         if response.status_code != 200:
             raise RuntimeError(response.text)
 
-        json = response.json()
+        json = parse_json(response)
         self._access_token = json["access_token"]
         self.expires_in = json["expires_in"]
 

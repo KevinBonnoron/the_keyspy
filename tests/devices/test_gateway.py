@@ -12,8 +12,10 @@ from the_keyspy.devices.gateway import (
     TheKeysGateway,
 )
 from the_keyspy.errors import (
+    GatewayActionError,
     GatewayTimeInvalidError,
     GatewayUnreachableError,
+    InvalidResponseError,
     LockerSyncError,
 )
 
@@ -267,3 +269,32 @@ class TestGatewayActionRetry(unittest.TestCase):
 
         # Called exactly once — no retry on SYNCHRONIZE itself
         self.assertEqual(self.synchronize_calls, 1)
+
+    def test_unhandled_ko_code_raises_gateway_action_error(self) -> None:
+        def close():
+            return jsonify({"status": "ko", "code": 36})
+
+        self.app.add_url_rule("/close", None, view_func=close, methods=["POST"])
+
+        with self.app.run("127.0.0.1", 5001):
+            with self.assertRaises(GatewayActionError) as ctx:
+                self.gateway.locker_close(IDENTIFIER, SHARE_CODE)
+
+        self.assertEqual(ctx.exception.code, 36)
+        self.assertEqual(ctx.exception.action, "close")
+        self.assertIn("code 36", str(ctx.exception))
+        self.assertIsInstance(ctx.exception, RuntimeError)
+
+    def test_non_json_response_raises_invalid_response(self) -> None:
+        def locker_status():
+            return ""
+
+        self.app.add_url_rule(
+            "/locker_status", None, view_func=locker_status, methods=["POST"]
+        )
+
+        with self.app.run("127.0.0.1", 5001):
+            with self.assertRaises(InvalidResponseError) as ctx:
+                self.gateway.locker_status(IDENTIFIER, SHARE_CODE)
+
+        self.assertEqual(ctx.exception.status_code, 200)

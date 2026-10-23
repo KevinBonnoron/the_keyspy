@@ -9,10 +9,12 @@ from typing import Any, Optional, cast
 import requests
 
 from ..errors import (
+    GatewayActionError,
     GatewayTimeInvalidError,
     GatewayUnreachableError,
     LockerSyncError,
 )
+from ..utils import parse_json
 from .base import TheKeysDevice
 
 logger = logging.getLogger("the_keyspy.devices.gateway")
@@ -164,7 +166,7 @@ class TheKeysGateway(TheKeysDevice):
             raise GatewayTimeInvalidError(response_data)
         if code in LOCKER_SYNC_ERROR_CODES:
             raise LockerSyncError(code, response_data)
-        raise RuntimeError(response_data)
+        raise GatewayActionError(self._ACTION_URLS[action], response_data)
 
     def __http_request(self, url: str, data: Optional[dict] = None) -> Any:
         method = "post" if data else "get"
@@ -176,7 +178,8 @@ class TheKeysGateway(TheKeysDevice):
                     response = session.post(full_url, data=data, timeout=GATEWAY_HTTP_TIMEOUT)
                 else:
                     response = session.get(full_url, timeout=GATEWAY_HTTP_TIMEOUT)
-                logger.debug("response_data: %s", response.json())
-                return response.json()
+                response_data = parse_json(response)
+                logger.debug("response_data: %s", response_data)
+                return response_data
         except (requests.Timeout, requests.ConnectionError) as error:
             raise GatewayUnreachableError(self._host, error) from error

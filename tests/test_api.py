@@ -8,6 +8,7 @@ from http_server_mock import HttpServerMock
 from the_keyspy import TheKeysApi
 from the_keyspy.errors import (
     GatewayAccessoryNotFoundError,
+    InvalidResponseError,
     NoAccessoriesFoundError,
     NoGatewayAccessoryFoundError,
     NoGatewayIpFoundError,
@@ -240,6 +241,18 @@ class TheKeyApiTest(unittest.TestCase):
                 "+33123456789", "password", base_url="http://127.0.0.1:5000")
             with self.assertRaises(NoUtilisateurFoundError):
                 controller.get_devices()
+
+    def test_empty_body_raises_invalid_response(self):
+        self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
+                              view_func=lambda username: "", methods=["GET"])
+        with self.app.run("127.0.0.1", 5000):
+            controller = TheKeysApi(
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
+            with self.assertRaises(InvalidResponseError) as ctx:
+                controller.get_devices()
+
+        self.assertEqual(ctx.exception.status_code, 200)
+        self.assertIn("<empty body>", str(ctx.exception))
 
     def test_partage_not_found(self):
         self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
