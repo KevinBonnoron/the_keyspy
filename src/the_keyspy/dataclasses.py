@@ -24,6 +24,16 @@ class Info:
     ip: Optional[str] = field(default=None)
 
 
+def _decode_info(value: Any) -> Optional[Info]:
+    """Decode an `info` payload; the API sends `[]` (PHP empty array) when there is none."""
+    if not value:
+        return None
+    return Info.from_dict(value)  # type: ignore[attr-defined,no-any-return]
+
+
+INFO_METADATA = config(decoder=_decode_info)
+
+
 # Accessoire
 @dataclass_json
 @dataclass
@@ -40,7 +50,7 @@ class Accessoire:
     created_at: DatabaseActionDate
     updated_at: DatabaseActionDate
     public_key: str
-    info: Info
+    info: Optional[Info] = field(metadata=INFO_METADATA)
     configuration: list[Any]
     cfg: Any
 
@@ -57,7 +67,7 @@ class SerrureAccessoireAccessoire:
     type: int
     version: int
     type_version: int
-    info: Info
+    info: Optional[Info] = field(metadata=INFO_METADATA)
     configuration: list[Any]
 
 
@@ -176,7 +186,7 @@ class UtilisateurSerrureAccessoireAccessoire:
 class UtilisateurSerrureAccessoire:
     id: int
     accessoire: UtilisateurSerrureAccessoireAccessoire
-    info: Optional[Info]
+    info: Optional[Info] = field(metadata=INFO_METADATA)
 
 
 @dataclass_json

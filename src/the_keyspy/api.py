@@ -215,24 +215,22 @@ class TheKeysApi:
         valid_gateways = []
         for x in gateway_accessoires:
             gw = self.find_accessoire_by_id(x.accessoire.id)
-            if gw and gw.info and gw.info.last_seen > cutoff:
-                valid_gateways.append((gw, x))
+            if gw.info and gw.info.last_seen > cutoff:
+                valid_gateways.append((gw.id, gw.info, x))
 
         if not valid_gateways:
             raise NoGatewayAccessoryFoundError(
                 "No gateway has been seen in the last 24 hours."
             )
 
-        gateway_accessoire, accessoire = max(
-            valid_gateways, key=lambda g: g[0].info.last_seen
+        gateway_id, info, accessoire = max(
+            valid_gateways, key=lambda g: g[1].last_seen
         )
 
-        if not gateway_accessoire.info.ip:
+        if not info.ip:
             raise NoGatewayIpFoundError("No gateway IP found.")
 
-        return TheKeysGateway(
-            gateway_accessoire.id, gateway_accessoire.info.ip
-        ), accessoire
+        return TheKeysGateway(gateway_id, info.ip), accessoire
 
     def __http_request(self, method: str, url: str, data: Any = None) -> Any:
         if not self.authenticated:

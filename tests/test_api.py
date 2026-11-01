@@ -395,3 +395,40 @@ class TheKeyApiTest(unittest.TestCase):
             # Check that the gateway selected is the most recent one (id=2)
             gateway = devices[0]
             self.assertEqual(gateway.id, 2)
+
+    def test_empty_array_info_is_treated_as_missing(self):
+        """The API sends `"info": []` (PHP empty array) for never-seen accessories.
+
+        Regression: decoding crashed with `'list' object has no attribute 'items'`.
+        A gateway with no info must be skipped in favour of one that has been seen.
+        """
+        class NeverSeenGatewayMock(UtilisateurSerrureAccessoireMock):
+            def __dict__(self):
+                return {**super().__dict__(), "info": []}
+
+        def utilisateur_with_never_seen_gateway(username: str):
+            serrure = UtilisateurSerrureMock()
+            serrure.with_accessoire(NeverSeenGatewayMock(id=1))
+            serrure.with_accessoire(UtilisateurSerrureAccessoireMock(id=2, minutes_ago=2))
+            return build_response(UtilisateurMock(username=username).with_serrure(serrure))
+
+        def accessoire_by_id(id: str):
+            if int(id) == 1:
+                return build_response(AccessoireMock(1, info=[]))
+            return build_response(AccessoireMock(int(id), minutes_ago=2))
+
+        self.app.add_url_rule("/fr/api/v2/utilisateur/get/<username>", None,
+                              view_func=utilisateur_with_never_seen_gateway, methods=["GET"])
+        self.app.add_url_rule("/fr/api/v2/accessoire/get/<id>", None,
+                              view_func=accessoire_by_id)
+        self.app.add_url_rule("/fr/api/v2/partage/all/serrure/<id_serrure>",
+                              None, view_func=partage_without_partages)
+        self.app.add_url_rule("/fr/api/v2/partage/create/<id_serrure>/accessoire/<id_accessoire>",
+                              None, view_func=create_partage, methods=["POST"])
+        with self.app.run("127.0.0.1", 5000):
+            controller = TheKeysApi(
+                "+33123456789", "password", base_url="http://127.0.0.1:5000")
+            devices = controller.get_devices()
+
+        self.assertEqual(len(devices), 2)
+        self.assertEqual(devices[0].id, 2)
